@@ -15,6 +15,8 @@ import {
   Mail,
   Menu,
   X,
+  Stethoscope,
+  Heart,
 } from "lucide-react";
 
 // Default contact info — overridden by values fetched from queue_settings
@@ -306,87 +308,79 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Right: Queue Preview Card */}
+            {/* Right: Faint Medical Graphics Composition */}
             <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="flex justify-center lg:justify-end"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.4 }}
+              className="relative hidden lg:block h-[500px] w-full pointer-events-none"
             >
-              <div className="relative w-full max-w-sm">
-                {/* Main card */}
-                <div className="bg-white rounded-3xl shadow-2xl p-6 border border-green-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-semibold text-gray-500">
-                      Your Queue Status
-                    </span>
-                    {/* PLACEHOLDER: Replace with live status from WebSocket/API */}
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                      Live
-                    </span>
-                  </div>
+              {/* Subtle Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-green-300/10 to-emerald-200/10 rounded-[40px] blur-3xl transform rotate-6" />
 
-                  {/* Queue number */}
-                  <div className="text-center py-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl mb-4">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
-                      Your Number
-                    </p>
-                    {/* PLACEHOLDER: Replace with actual queue number from API */}
-                    <p className="text-6xl font-black text-green-600">A-052</p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Currently serving: <strong className="text-gray-700">A-047</strong>
-                    </p>
-                  </div>
+              {/* Faint Medical Icons */}
+              <motion.div
+                animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-[5%] right-[15%] text-green-500/20"
+              >
+                <Stethoscope className="w-48 h-48" strokeWidth={1} />
+              </motion.div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-green-50 rounded-2xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Ahead of you</p>
-                      {/* PLACEHOLDER: Real-time count from queue API */}
-                      <p className="text-2xl font-bold text-green-700">5</p>
-                      <p className="text-xs text-gray-400">patients</p>
-                    </div>
-                    <div className="bg-emerald-50 rounded-2xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Est. Wait</p>
-                      {/* PLACEHOLDER: Real-time estimate from AI engine */}
-                      <p className="text-2xl font-bold text-emerald-700">~25</p>
-                      <p className="text-xs text-gray-400">minutes</p>
-                    </div>
-                  </div>
+              <motion.div
+                animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
+                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute bottom-[5%] left-[5%] text-emerald-500/20"
+              >
+                <Activity className="w-64 h-64" strokeWidth={1} />
+              </motion.div>
 
-                  {/* Progress bar */}
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                      <span>Queue Progress</span>
-                      <span>47 / 65 served</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2.5">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: "72%" }}
-                        transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" }}
-                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-2.5 rounded-full"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.5, 0.2] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute top-[35%] left-[45%] text-green-400/20"
+              >
+                <Heart className="w-36 h-36" strokeWidth={1} />
+              </motion.div>
 
-                {/* Floating notification */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.2 }}
-                  className="absolute -bottom-4 -right-4 bg-white rounded-2xl shadow-xl p-3 border border-green-100 flex items-center gap-2 max-w-48"
-                >
-                  <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700">Your turn soon!</p>
-                    <p className="text-xs text-gray-500">2 patients ahead</p>
-                  </div>
-                </motion.div>
-              </div>
+              <motion.div
+                animate={{ y: [0, 15, 0], rotate: [0, 15, 0] }}
+                transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute bottom-[20%] right-[5%] text-green-500/15"
+              >
+                <FileText className="w-40 h-40" strokeWidth={1} />
+              </motion.div>
+
+              <motion.div
+                animate={{ y: [0, -15, 0], rotate: [0, -5, 0] }}
+                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                className="absolute top-[20%] left-[10%] text-emerald-400/15"
+              >
+                <Shield className="w-32 h-32" strokeWidth={1} />
+              </motion.div>
+
+              {/* Faint floating dots/plus signs */}
+              <motion.div
+                animate={{ y: [0, -30, 0], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute top-[15%] left-[30%] text-emerald-500/40 text-5xl font-light"
+              >
+                +
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, 30, 0], opacity: [0.2, 0.5, 0.2] }}
+                transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                className="absolute bottom-[20%] right-[40%] text-green-500/40 text-6xl font-light"
+              >
+                +
+              </motion.div>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute top-[60%] right-[20%] text-emerald-400/40 text-4xl font-light"
+              >
+                +
+              </motion.div>
             </motion.div>
           </div>
 

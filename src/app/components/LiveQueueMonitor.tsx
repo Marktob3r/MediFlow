@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Clock,
   Users,
   Bell,
   RefreshCw,
@@ -12,6 +11,7 @@ import {
   Volume2,
   Wifi,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
@@ -25,19 +25,16 @@ export default function LiveQueueMonitor() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [clinicHours, setClinicHours] = useState<any[]>([]);
-  const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchQueueData();
-    fetchClinicHours();
-    
+
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
       fetchQueueData();
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -89,22 +86,6 @@ export default function LiveQueueMonitor() {
     }
   };
 
-  const fetchClinicHours = async () => {
-    // Set default clinic hours (can be fetched from settings table)
-    setClinicHours([
-      { day: "Monday - Friday", hours: "8:00 AM - 5:00 PM", open: true },
-      { day: "Saturday", hours: "8:00 AM - 12:00 PM", open: true },
-      { day: "Sunday", hours: "Closed", open: false },
-    ]);
-    
-    const now = new Date();
-    const day = now.getDay();
-    const hour = now.getHours();
-    // Check if clinic is open (simplified logic)
-    const isOpenNow = (day >= 1 && day <= 5 && hour >= 8 && hour < 17) || 
-                      (day === 6 && hour >= 8 && hour < 12);
-    setIsOpen(isOpenNow);
-  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -154,10 +135,10 @@ export default function LiveQueueMonitor() {
       {/* Live indicator */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <span className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full ${isOpen ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          <span className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full bg-green-100 text-green-700">
             <Wifi className="w-4 h-4" />
-            <span className={`w-2 h-2 rounded-full animate-pulse ${isOpen ? "bg-green-500" : "bg-red-500"}`} />
-            {isOpen ? "Clinic Open Now" : "Clinic Closed"}
+            <span className="w-2 h-2 rounded-full animate-pulse bg-green-500" />
+            Live
           </span>
         </div>
         <p className="text-xs text-gray-400">
@@ -275,18 +256,16 @@ export default function LiveQueueMonitor() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`flex items-center gap-4 px-5 py-4 transition-colors ${
-                      item.isMe ? "bg-green-50" : "hover:bg-gray-50"
-                    }`}
+                    className={`flex items-center gap-4 px-5 py-4 transition-colors ${item.isMe ? "bg-green-50" : "hover:bg-gray-50"
+                      }`}
                   >
                     <div
-                      className={`w-14 text-center py-2 rounded-xl font-black text-sm border ${
-                        item.status === "serving"
+                      className={`w-14 text-center py-2 rounded-xl font-black text-sm border ${item.status === "serving"
                           ? "bg-green-500 text-white border-green-400"
                           : item.isMe
-                          ? "bg-green-100 text-green-700 border-green-200"
-                          : "bg-gray-100 text-gray-600 border-gray-200"
-                      }`}
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : "bg-gray-100 text-gray-600 border-gray-200"
+                        }`}
                     >
                       {item.token}
                     </div>
@@ -306,9 +285,8 @@ export default function LiveQueueMonitor() {
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                        item.status === "serving" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"
-                      }`}>
+                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.status === "serving" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"
+                        }`}>
                         {item.status === "serving" ? "🟢 Now Serving" : `#${item.position}`}
                       </span>
                       <p className="text-xs text-gray-400 mt-1">{item.waitTime}</p>
@@ -322,30 +300,8 @@ export default function LiveQueueMonitor() {
 
         {/* Side Panel */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Clinic Hours */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5 text-green-600" />
-              <h3 className="font-bold text-gray-900">Clinic Hours</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              {clinicHours.map((h, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-gray-600">{h.day}</span>
-                  <span className={`font-semibold ${h.open ? "text-gray-800" : "text-red-400"}`}>{h.hours}</span>
-                </div>
-              ))}
-            </div>
-            <div className={`mt-4 rounded-2xl px-3 py-2 flex items-center gap-2 ${isOpen ? "bg-green-50" : "bg-red-50"}`}>
-              <div className={`w-2 h-2 rounded-full animate-pulse ${isOpen ? "bg-green-500" : "bg-red-500"}`} />
-              <span className={`text-xs font-semibold ${isOpen ? "text-green-700" : "text-red-700"}`}>
-                {isOpen ? "Clinic is Open Now" : "Clinic is Closed"}
-              </span>
-            </div>
-          </div>
-
           {/* Join Queue Button */}
-          {!myQueueEntry && isOpen && (
+          {!myQueueEntry && (
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
@@ -362,7 +318,7 @@ export default function LiveQueueMonitor() {
               <AlertCircle className="w-8 h-8 text-green-500 mb-3" />
               <p className="font-bold text-gray-900 mb-1">You're in the queue!</p>
               <p className="text-xs text-gray-500">
-                Your token is <strong className="text-green-600">{myQueueEntry.token}</strong>. 
+                Your token is <strong className="text-green-600">{myQueueEntry.token}</strong>.
                 Position #{myPosition} with {myPosition - 1} people ahead.
               </p>
             </div>
