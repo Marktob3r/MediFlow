@@ -22,10 +22,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import { useNetworkStatus } from "../../components/useNetworkStatus";
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isOnline, wasOffline } = useNetworkStatus();
   const [activeQueue, setActiveQueue] = useState<any>(null);
   const [recentVisits, setRecentVisits] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -55,6 +57,13 @@ export default function PatientDashboard() {
       fetchDashboardData();
     }
   }, [user]);
+
+  // Re-fetch automatically when internet reconnects
+  useEffect(() => {
+    if (wasOffline && user) {
+      fetchDashboardData();
+    }
+  }, [wasOffline]);
 
   const fetchDashboardData = async () => {
     try {

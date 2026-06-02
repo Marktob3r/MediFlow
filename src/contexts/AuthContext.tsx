@@ -70,8 +70,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setUser(authUser);
       setUserRole(role);
+      setLoading(false);
     } catch (err) {
       console.error("Failed to assemble user profile", err);
+      // CRITICAL: ensure loading is cleared even on failure so the app
+      // never hangs on a permanent spinner
+      setUser(null);
+      setUserRole(null);
+      setLoading(false);
     }
   };
 
@@ -100,13 +106,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Set loading to false once user is fetched
-  useEffect(() => {
-    if (user || userRole === null) {
-      setLoading(false);
-    }
-  }, [user, userRole]);
 
   const signUp = async (email: string, password: string, userData: any): Promise<{ needsEmailConfirmation: boolean }> => {
     try {

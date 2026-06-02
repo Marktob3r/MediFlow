@@ -21,10 +21,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import { useNetworkStatus } from "../../components/useNetworkStatus";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isOnline, wasOffline } = useNetworkStatus();
   const [queue, setQueue] = useState<any[]>([]);
   const [queueStats, setQueueStats] = useState({
     totalToday: 0,
@@ -48,6 +50,13 @@ export default function StaffDashboard() {
     const interval = setInterval(fetchQueueData, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Re-fetch automatically when internet reconnects
+  useEffect(() => {
+    if (wasOffline) {
+      fetchQueueData();
+    }
+  }, [wasOffline]);
 
   const fetchQueueData = async () => {
     try {
