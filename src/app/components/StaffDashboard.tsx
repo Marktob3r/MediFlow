@@ -22,6 +22,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
 import { useNetworkStatus } from "../../components/useNetworkStatus";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function StaffDashboard() {
   const [completingToken, setCompletingToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [diagnosisNotes, setDiagnosisNotes] = useState("");
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchQueueData();
@@ -125,8 +127,10 @@ export default function StaffDashboard() {
       }
       
       fetchQueueData();
-    } catch (error) {
+      showToast("Success", "Called next patient successfully", "success");
+    } catch (error: any) {
       console.error("Error calling next patient:", error);
+      showToast("Error", error.message || "Failed to call next patient", "error");
     }
   };
 
@@ -151,8 +155,10 @@ export default function StaffDashboard() {
       setShowCompleteModal(false);
       fetchQueueData();
       handleCallNext();
-    } catch (error) {
+      showToast("Success", "Visit marked as complete", "success");
+    } catch (error: any) {
       console.error("Error completing visit:", error);
+      showToast("Error", error.message || "Failed to complete visit", "error");
     }
   };
 
@@ -185,7 +191,10 @@ export default function StaffDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setQueuePaused(!queuePaused)}
+            onClick={() => {
+              setQueuePaused(!queuePaused);
+              showToast("Info", !queuePaused ? "Queue paused" : "Queue resumed", "info");
+            }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
               queuePaused
                 ? "bg-green-500 text-white shadow-md hover:bg-green-600"

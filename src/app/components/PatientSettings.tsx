@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function PatientSettings() {
   const { user } = useAuth();
@@ -47,10 +48,9 @@ export default function PatientSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -153,11 +153,10 @@ export default function PatientSettings() {
 
       if (patientError) throw patientError;
 
-      setSavedSuccess(true);
+      showToast("Success", "Information saved successfully!", "success");
       setIsEditing(false);
-      setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message);
+      showToast("Error", err.message || "Failed to update profile", "error");
     } finally {
       setSaving(false);
     }
@@ -165,7 +164,6 @@ export default function PatientSettings() {
 
   const handleSaveNotifications = async () => {
     setSaving(true);
-    setError(null);
     try {
       const { error } = await supabase
         .from("notification_preferences")
@@ -185,10 +183,9 @@ export default function PatientSettings() {
 
       if (error) throw error;
 
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+      showToast("Success", "Notification preferences saved!", "success");
     } catch (err: any) {
-      setError(err.message);
+      showToast("Error", err.message || "Failed to save preferences", "error");
     } finally {
       setSaving(false);
     }
@@ -196,16 +193,15 @@ export default function PatientSettings() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match");
+      showToast("Error", "New passwords do not match", "error");
       return;
     }
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
+      showToast("Error", "Password must be at least 6 characters", "error");
       return;
     }
 
     setSaving(true);
-    setError(null);
     try {
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
@@ -216,10 +212,9 @@ export default function PatientSettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+      showToast("Success", "Password changed successfully!", "success");
     } catch (err: any) {
-      setError(err.message);
+      showToast("Error", err.message || "Failed to change password", "error");
     } finally {
       setSaving(false);
     }
@@ -259,20 +254,6 @@ export default function PatientSettings() {
         <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Settings & Personal Details</h1>
         <p className="text-gray-500 text-sm">Manage your profile, preferences, and security settings.</p>
       </div>
-
-      {/* Success Alert */}
-      {savedSuccess && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-2xl text-green-700 text-sm">
-          ✓ Settings saved successfully!
-        </div>
-      )}
-
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Tab Nav */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-6 overflow-x-auto">

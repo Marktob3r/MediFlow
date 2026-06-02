@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import { useToast } from "../../contexts/ToastContext";
 
 const SERVICES = [
   { id: "general", icon: Stethoscope, label: "General Consultation", wait: "~25 min" },
@@ -53,7 +54,7 @@ export default function JoinQueue() {
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [queueToken, setQueueToken] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [form, setForm] = useState({
     chiefComplaint: "",
     duration: "",
@@ -71,13 +72,11 @@ export default function JoinQueue() {
 
   const generateToken = async () => {
     if (!user) {
-      setError("Please login to join the queue");
+      showToast("Error", "Please login to join the queue", "error");
       return;
     }
 
     setLoading(true);
-    setError(null);
-
     try {
       const selectedServiceObj = SERVICES.find(s => s.id === selectedService);
 
@@ -139,7 +138,7 @@ export default function JoinQueue() {
       setStep(3);
     } catch (err: any) {
       console.error("Error generating token:", err);
-      setError(err.message || "Failed to generate queue token. Please try again.");
+      showToast("Error", err.message || "Failed to generate queue token. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -168,13 +167,6 @@ export default function JoinQueue() {
         <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Join Today's Queue</h1>
         <p className="text-gray-500 text-sm">Follow the steps below to get your queue token.</p>
       </div>
-
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-2 mb-8">

@@ -1,5 +1,6 @@
 import React, { createContext, ReactNode, useEffect, useState } from "react";
 import { supabase } from "../config/supabase";
+import { useToast } from "./ToastContext";
 
 export type UserRole = "patient" | "staff" | "admin";
 
@@ -34,6 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const { showToast } = useToast();
 
   // Helper to fetch full user profile and role from the database
   const fetchUserProfile = async (userId: string, email: string) => {
@@ -182,6 +184,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) throw error;
 
+      showToast("Welcome Back!", "You have successfully logged in.", "success");
       // onAuthStateChange will handle fetching profile
     } catch (error) {
       console.error("Sign in error:", error);
@@ -193,6 +196,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      showToast("Logged Out", "You have been securely logged out.", "success");
     } catch (error) {
       console.error("Sign out error:", error);
     }

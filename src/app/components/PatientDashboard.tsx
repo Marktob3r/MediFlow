@@ -23,6 +23,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
 import { useNetworkStatus } from "../../components/useNetworkStatus";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function PatientDashboard() {
   });
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
-  const [showToast, setShowToast] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -204,9 +205,9 @@ export default function PatientDashboard() {
       if (patientError) throw patientError;
 
       setShowOnboarding(false);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      showToast("Profile Completed!", "Your information has been saved successfully.", "success");
     } catch (err: any) {
+      showToast("Error", err.message || "Failed to complete onboarding", "error");
       setOnboardingError(err.message);
     } finally {
       setSavingOnboarding(false);
@@ -661,26 +662,6 @@ export default function PatientDashboard() {
           </div>
         </motion.div>
       </div>
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 right-6 bg-white border border-green-100 rounded-2xl shadow-2xl p-4 flex items-center gap-3 z-50"
-          >
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-gray-900">Profile Completed!</h4>
-              <p className="text-xs text-gray-500">Your information has been saved successfully.</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
