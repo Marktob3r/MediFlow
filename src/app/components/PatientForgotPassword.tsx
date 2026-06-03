@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Mail, ArrowLeft, AlertCircle, CheckCircle2, Lock, Eye, EyeOff, Search, ShieldAlert } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import { useToast } from "../../contexts/ToastContext";
 
 type Step = "find_account" | "confirm_code" | "reset_password" | "success";
 
@@ -18,10 +19,9 @@ export default function PatientForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -32,7 +32,6 @@ export default function PatientForgotPassword() {
 
   const handleFindAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
@@ -56,10 +55,10 @@ export default function PatientForgotPassword() {
 
       await sendPasswordResetOtp(email);
       setStep("confirm_code");
-      setMessage("A 6-digit code has been sent to your email.");
+      showToast("Success", "A 6-digit code has been sent to your email.", "success");
       setCooldown(60);
     } catch (err: any) {
-      setError(err.message || "Failed to find account or send recovery email.");
+      showToast("Error", err.message || "Failed to find account or send recovery email.", "error");
     } finally {
       setLoading(false);
     }
@@ -67,8 +66,6 @@ export default function PatientForgotPassword() {
 
   const handleConfirmCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setMessage(null);
     setLoading(true);
 
     try {
@@ -78,7 +75,7 @@ export default function PatientForgotPassword() {
       await verifyPasswordResetOtp(email, token);
       setStep("reset_password");
     } catch (err: any) {
-      setError(err.message || "Invalid or expired code.");
+      showToast("Error", err.message || "Invalid or expired code.", "error");
     } finally {
       setLoading(false);
     }
@@ -86,15 +83,13 @@ export default function PatientForgotPassword() {
 
   const handleResendCode = async () => {
     if (cooldown > 0) return;
-    setError(null);
-    setMessage(null);
     setLoading(true);
     try {
       await sendPasswordResetOtp(email);
-      setMessage("A new verification code has been sent to your email.");
+      showToast("Success", "A new verification code has been sent to your email.", "success");
       setCooldown(60);
     } catch (err: any) {
-      setError(err.message || "Failed to resend code.");
+      showToast("Error", err.message || "Failed to resend code.", "error");
     } finally {
       setLoading(false);
     }
@@ -102,7 +97,6 @@ export default function PatientForgotPassword() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
@@ -115,7 +109,7 @@ export default function PatientForgotPassword() {
       await updatePassword(newPassword);
       setStep("success");
     } catch (err: any) {
-      setError(err.message || "Failed to update password.");
+      showToast("Error", err.message || "Failed to update password.", "error");
     } finally {
       setLoading(false);
     }
@@ -141,34 +135,6 @@ export default function PatientForgotPassword() {
         {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-green-100 overflow-hidden p-6 sm:p-8">
           
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 mb-6"
-              >
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{error}</p>
-              </motion.div>
-            )}
-            
-            {message && (
-              <motion.div
-                key="message"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-start gap-3 mb-6"
-              >
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-green-700">{message}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <AnimatePresence mode="wait">
             
             {/* ── STEP 1: FIND ACCOUNT ── */}
