@@ -125,8 +125,8 @@ export default function StaffLogin() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className={`flex items-start gap-2 px-4 py-3 rounded-2xl text-sm ${error.includes("patient")
-                    ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
-                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                  ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
+                  : "bg-red-500/10 border border-red-500/20 text-red-400"
                   }`}
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -151,22 +151,6 @@ export default function StaffLogin() {
             </motion.button>
           </form>
         </div>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Are you a patient?{" "}
-          <button
-            onClick={() => navigate("/patient/login")}
-            className="text-green-400 font-semibold hover:text-green-300"
-          >
-            Patient Login →
-          </button>
-        </p>
-
-        <p className="text-center text-xs text-gray-600 mt-4">
-          {/* PLACEHOLDER: Replace with actual system version from deployment config */}
-          MediFlow v1.0.0 · Unauthorized access is strictly prohibited
-          MediQueue v1.0.0 · Unauthorized access is strictly prohibited
-        </p>
       </motion.div>
     </div>
   );

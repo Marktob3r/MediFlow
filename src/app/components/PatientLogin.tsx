@@ -195,8 +195,8 @@ export default function PatientLogin() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-sm font-semibold text-gray-700">Password</label>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => navigate("/patient/forgot-password")}
                         className="text-xs text-green-600 hover:text-green-700 font-medium"
                       >
@@ -419,17 +419,6 @@ export default function PatientLogin() {
             </AnimatePresence>
           </div>
         </div>
-
-        {/* Staff link */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Are you a clinic staff?{" "}
-          <button
-            onClick={() => navigate("/staff/login")}
-            className="text-green-600 font-semibold hover:text-green-700"
-          >
-            Staff / Admin Login →
-          </button>
-        </p>
       </motion.div>
     </div>
   );
