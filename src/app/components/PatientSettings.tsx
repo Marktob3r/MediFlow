@@ -123,7 +123,6 @@ export default function PatientSettings() {
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    setError(null);
     try {
       const { error: profileError } = await supabase
         .from("user_profiles")
@@ -209,7 +208,6 @@ export default function PatientSettings() {
 
       if (updateError) throw updateError;
 
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       showToast("Success", "Password changed successfully!", "success");
