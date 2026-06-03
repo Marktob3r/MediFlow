@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle, AlertCircle, Phone } from "lucide-react";
+import { Activity, Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle, AlertCircle, Phone, X, ScrollText, Shield } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 type Tab = "login" | "register";
@@ -16,6 +16,7 @@ export default function PatientLogin() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalContent, setModalContent] = useState<"terms" | "privacy" | null>(null);
 
   // Redirect if already logged in as a patient
   useEffect(() => {
@@ -363,11 +364,17 @@ export default function PatientLogin() {
                     </div>
                     <span className="text-xs text-gray-500 leading-relaxed">
                       I agree to the{" "}
-                      <span className="text-green-600 font-semibold cursor-pointer hover:underline">
+                      <span 
+                        onClick={() => setModalContent("terms")}
+                        className="text-green-600 font-semibold cursor-pointer hover:underline"
+                      >
                         Terms of Service
                       </span>{" "}
                       and{" "}
-                      <span className="text-green-600 font-semibold cursor-pointer hover:underline">
+                      <span 
+                        onClick={() => setModalContent("privacy")}
+                        className="text-green-600 font-semibold cursor-pointer hover:underline"
+                      >
                         Privacy Policy
                       </span>
                       . My data will be used for medical record purposes only.
@@ -420,6 +427,91 @@ export default function PatientLogin() {
           </div>
         </div>
       </motion.div>
+
+      {/* ── TERMS & PRIVACY MODAL ── */}
+      <AnimatePresence>
+        {modalContent && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModalContent(null)}
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[100]"
+            />
+            
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-3xl shadow-2xl z-[101] overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                    {modalContent === "terms" ? <ScrollText className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {modalContent === "terms" ? "Terms of Service" : "Privacy Policy"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setModalContent(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto custom-scrollbar text-sm text-gray-600 space-y-4">
+                {modalContent === "terms" ? (
+                  <>
+                    <p className="font-semibold text-gray-900">1. Acceptance of Terms</p>
+                    <p>By creating an account and accessing the MediFlow patient portal for {CLINIC_NAME}, you agree to be bound by these Terms of Service. If you do not agree, please do not use this service.</p>
+                    
+                    <p className="font-semibold text-gray-900 mt-4">2. Medical Information Disclaimer</p>
+                    <p>This system is designed for queue management, appointment scheduling, and accessing personal medical records. The information provided through this portal does not substitute professional medical advice, diagnosis, or treatment.</p>
+                    
+                    <p className="font-semibold text-gray-900 mt-4">3. Account Security</p>
+                    <p>You are responsible for maintaining the confidentiality of your login credentials. Any activity occurring under your account is your responsibility. Please notify clinic staff immediately of any unauthorized use.</p>
+
+                    <p className="font-semibold text-gray-900 mt-4">4. Queue & Appointment Rules</p>
+                    <p>Generating a queue token does not guarantee an exact consultation time. Wait times are estimates. Patients must be present at the clinic when their number is called, otherwise they may forfeit their position.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-gray-900">1. Information We Collect</p>
+                    <p>We collect personal information necessary for providing medical care, including your name, contact details, date of birth, gender, and medical history. We also collect usage data to improve our digital services.</p>
+                    
+                    <p className="font-semibold text-gray-900 mt-4">2. How We Use Your Data</p>
+                    <p>Your data is used strictly for facilitating medical consultations, maintaining accurate health records at {CLINIC_NAME}, and sending important notifications regarding your queue status or appointments.</p>
+                    
+                    <p className="font-semibold text-gray-900 mt-4">3. Data Protection & Security</p>
+                    <p>We implement industry-standard security measures to protect your personal health information. Your data is encrypted and stored securely. We comply with all applicable national data privacy laws regarding medical records.</p>
+                    
+                    <p className="font-semibold text-gray-900 mt-4">4. Sharing of Information</p>
+                    <p>We do not sell, trade, or otherwise transfer your personally identifiable information to outside parties without your explicit consent, except when required by law or necessary for emergency medical treatment.</p>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setModalContent(null)}
+                  className="bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-green-700 transition-colors"
+                >
+                  I Understand
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
