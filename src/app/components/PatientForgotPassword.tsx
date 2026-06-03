@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Mail, ArrowLeft, AlertCircle, CheckCircle2, Lock, Eye, EyeOff, Search } from "lucide-react";
+import { Mail, ArrowLeft, AlertCircle, CheckCircle2, Lock, Eye, EyeOff, Search, ShieldAlert } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { supabase } from "../../config/supabase";
 
 type Step = "find_account" | "confirm_code" | "reset_password" | "success";
 
@@ -36,6 +37,23 @@ export default function PatientForgotPassword() {
 
     try {
       if (!email) throw new Error("Please enter your email address.");
+
+      // Security: verify the email belongs to a registered account before
+      // sending any reset email — prevents fake-email spam and user enumeration.
+      const { data: accountData, error: lookupError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .eq("email", email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (lookupError) throw lookupError;
+
+      if (!accountData) {
+        // Apply a 15-second cooldown even on failure to slow down enumeration
+        setCooldown(15);
+        throw new Error("No account found with this email. Please check and try again.");
+      }
+
       await sendPasswordResetOtp(email);
       setStep("confirm_code");
       setMessage("A 6-digit code has been sent to your email.");
@@ -188,11 +206,13 @@ export default function PatientForgotPassword() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || cooldown > 0}
                     className="w-full bg-green-600 text-white font-bold py-3.5 rounded-2xl shadow hover:bg-green-700 transition-all disabled:opacity-70 flex items-center justify-center"
                   >
                     {loading ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : cooldown > 0 ? (
+                      `Please wait ${cooldown}s…`
                     ) : (
                       "Search"
                     )}
