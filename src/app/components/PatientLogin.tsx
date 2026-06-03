@@ -314,8 +314,15 @@ export default function PatientLogin() {
                           value={regForm.password}
                           onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
                           placeholder="••••••"
-                          className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                          className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass(!showPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors"
+                        >
+                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
                     <div>
@@ -330,19 +337,18 @@ export default function PatientLogin() {
                           value={regForm.confirmPassword}
                           onChange={(e) => setRegForm({ ...regForm, confirmPassword: e.target.value })}
                           placeholder="••••••"
-                          className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                          className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass(!showPass)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors"
+                        >
+                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="text-xs text-green-600 hover:text-green-700 font-medium"
-                  >
-                    {showPass ? "Hide" : "Show"} passwords
-                  </button>
 
                   {/* Terms */}
                   <label className="flex items-start gap-3 cursor-pointer">
