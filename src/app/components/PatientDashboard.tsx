@@ -58,19 +58,7 @@ export default function PatientDashboard() {
     try {
       setLoading(true);
 
-      // Fetch active queue entry
-      const { data: queueData } = await supabase
-        .from("queue_entries")
-        .select("*")
-        .eq("patient_id", user?.id)
-        .eq("status", "waiting")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      setActiveQueue(queueData);
-
-      // Check onboarding status
+      // 1. Check onboarding status first
       const { data: profileData } = await supabase
         .from("user_profiles")
         .select("*")
@@ -96,6 +84,18 @@ export default function PatientDashboard() {
         navigate("/patient/onboarding", { replace: true });
         return;
       }
+
+      // 2. Profile is complete, now fetch the rest of the dashboard data
+      const { data: queueData } = await supabase
+        .from("queue_entries")
+        .select("*")
+        .eq("patient_id", user?.id)
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      setActiveQueue(queueData);
 
       // Fetch recent medical records (last 3)
       const { data: visitsData } = await supabase
