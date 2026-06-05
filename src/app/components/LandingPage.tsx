@@ -287,7 +287,7 @@ export default function LandingPage() {
               <p className="text-gray-600 text-lg leading-relaxed mb-4">
                 {/* PLACEHOLDER: Customize intro text for the clinic */}
                 Welcome to <strong>{clinicInfo.name}</strong>'s digital throughput
-                system. Join the queue remotely, track your position in
+                system. Join the queue, track your position in
                 real-time, and get notified when it's your turn.
               </p>
               <p className="text-gray-500 text-base leading-relaxed mb-10">

@@ -204,6 +204,11 @@ export default function AdminLayout() {
             <Menu className="w-5 h-5" />
           </button>
 
+          <div className="hidden lg:block">
+            <h2 className="font-bold text-gray-900">
+              {adminNavItems.find((n) => n.path === location.pathname)?.label || "Admin Portal"}
+            </h2>
+          </div>
 
         </header>
 

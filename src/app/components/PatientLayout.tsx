@@ -162,7 +162,6 @@ export default function PatientLayout() {
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 text-sm truncate">{getPatientName()}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.patient_id || "Loading..."}</p>
               </div>
             </div>
             {/* Active queue token badge - DYNAMIC */}
@@ -193,8 +192,8 @@ export default function PatientLayout() {
                   setSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all group ${active
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
-                    : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
+                  : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                   }`}
               >
                 <item.icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-white" : "text-gray-400 group-hover:text-green-600"}`} />
