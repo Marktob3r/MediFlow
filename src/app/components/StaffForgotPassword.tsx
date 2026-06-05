@@ -152,7 +152,9 @@ export default function StaffForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-green-950 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
 
       {/* Floating Medical Doodles */}
       {[
@@ -170,10 +172,10 @@ export default function StaffForgotPassword() {
           key={i}
           className="absolute pointer-events-none select-none"
           style={{ left: d.x, top: d.y }}
-          animate={{ y: [0, -14, 0], rotate: [0, 6, -6, 0], opacity: [0.3, 0.5, 0.3] }}
+          animate={{ y: [0, -14, 0], rotate: [0, 6, -6, 0], opacity: [0.2, 0.35, 0.2] }}
           transition={{ duration: d.duration, delay: d.delay, repeat: Infinity, ease: "easeInOut" }}
         >
-          <svg width={d.size} height={d.size} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={d.size} height={d.size} viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
             <path d={d.icon} />
           </svg>
         </motion.div>
@@ -182,7 +184,7 @@ export default function StaffForgotPassword() {
       {/* Back button */}
       <button
         onClick={() => step === "find_account" || step === "success" ? navigate("/staff/login") : setStep("find_account")}
-        className="fixed top-6 left-6 flex items-center gap-2 text-green-700 hover:text-green-800 font-medium text-sm bg-white rounded-2xl px-4 py-2.5 shadow-md border border-green-100 hover:shadow-lg transition-all"
+        className="fixed top-6 left-6 flex items-center gap-2 text-gray-300 hover:text-white font-medium text-sm bg-white/10 rounded-2xl px-4 py-2.5 backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all"
       >
         <ArrowLeft className="w-4 h-4" />
         {step === "find_account" || step === "success" ? "Back to Login" : "Back"}
@@ -196,15 +198,15 @@ export default function StaffForgotPassword() {
       >
         {/* Logo / Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
             <Activity className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Authorized Personnel Portal</h1>
-          <p className="text-gray-500 text-sm mt-1">{CLINIC_NAME}</p>
+          <h1 className="text-2xl font-extrabold text-white">Authorized Personnel Portal</h1>
+          <p className="text-gray-400 text-sm mt-1">{CLINIC_NAME}</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl border border-green-100 overflow-hidden p-6 sm:p-8">
+        <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden p-6 sm:p-8">
 
           <AnimatePresence mode="wait">
 
@@ -217,14 +219,14 @@ export default function StaffForgotPassword() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Find your account</h2>
-                <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-white mb-2">Find your account</h2>
+                <p className="text-gray-300 text-sm mb-6 pb-6 border-b border-white/10">
                   Please enter your staff email address to search for your account.
                 </p>
 
                 <form onSubmit={handleFindAccount} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
                       Email Address
                     </label>
                     <div className="relative">
@@ -235,7 +237,7 @@ export default function StaffForgotPassword() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="staff@spdizon-clinic.ph"
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                       />
                     </div>
                   </div>
@@ -267,18 +269,18 @@ export default function StaffForgotPassword() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter security code</h2>
-                <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-white mb-2">Enter security code</h2>
+                <p className="text-gray-300 text-sm mb-6 pb-6 border-b border-white/10">
                   Please check your email for a message with your code. Your code is 6 numbers long.
                 </p>
 
-                <div className="flex items-center gap-3 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-green-600" />
+                <div className="flex items-center gap-3 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">We sent a code to:</p>
-                    <p className="text-sm text-gray-500">{email}</p>
+                    <p className="text-sm font-semibold text-white">We sent a code to:</p>
+                    <p className="text-sm text-gray-400">{email}</p>
                   </div>
                 </div>
 
@@ -292,7 +294,7 @@ export default function StaffForgotPassword() {
                         value={token}
                         onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
                         placeholder="000000"
-                        className="w-full max-w-[200px] text-center text-3xl tracking-widest px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-400 font-mono"
+                        className="w-full max-w-[200px] text-center text-3xl tracking-widest px-4 py-3 bg-white/5 border border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-white placeholder-gray-600"
                       />
                     </div>
                   </div>
@@ -301,7 +303,7 @@ export default function StaffForgotPassword() {
                     <button
                       type="button"
                       onClick={() => setStep("find_account")}
-                      className="flex-1 bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-200 transition-all"
+                      className="flex-1 bg-white/10 text-white font-bold py-3.5 rounded-2xl hover:bg-white/20 transition-all border border-white/10"
                     >
                       Cancel
                     </button>
@@ -326,8 +328,8 @@ export default function StaffForgotPassword() {
                     onClick={handleResendCode}
                     disabled={cooldown > 0 || loading}
                     className={`text-sm font-semibold transition-colors ${cooldown > 0 || loading
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-green-600 hover:text-green-700"
+                        ? "text-gray-500 cursor-not-allowed"
+                        : "text-green-400 hover:text-green-300"
                       }`}
                   >
                     {cooldown > 0 ? `Didn't get a code? Wait ${cooldown}s` : "Didn't get a code?"}
@@ -345,14 +347,14 @@ export default function StaffForgotPassword() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Create new password</h2>
-                <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-white mb-2">Create new password</h2>
+                <p className="text-gray-300 text-sm mb-6 pb-6 border-b border-white/10">
                   You'll use this password to access your account. Enter a combination of at least 6 letters, numbers, and punctuation marks.
                 </p>
 
                 <form onSubmit={handleResetPassword} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
                       New Password
                     </label>
                     <div className="relative">
@@ -363,13 +365,13 @@ export default function StaffForgotPassword() {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="••••••"
-                        className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
                       Confirm New Password
                     </label>
                     <div className="relative">
@@ -380,7 +382,7 @@ export default function StaffForgotPassword() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••"
-                        className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                       />
                     </div>
                   </div>
@@ -389,7 +391,7 @@ export default function StaffForgotPassword() {
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="text-xs text-green-600 hover:text-green-700 font-medium"
+                      className="text-xs text-green-400 hover:text-green-300 font-medium"
                     >
                       {showPass ? "Hide" : "Show"} passwords
                     </button>
@@ -423,12 +425,12 @@ export default function StaffForgotPassword() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                  className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30"
                 >
-                  <CheckCircle2 className="w-10 h-10 text-green-500" />
+                  <CheckCircle2 className="w-10 h-10 text-green-400" />
                 </motion.div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Password Updated!</h3>
-                <p className="text-gray-500 text-sm mb-8">
+                <h3 className="text-xl font-bold text-white mb-2">Password Updated!</h3>
+                <p className="text-gray-400 text-sm mb-8">
                   Your password has been changed successfully. You can now use your new password to log in.
                 </p>
                 <button
