@@ -206,10 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) throw error;
 
-      // Don't show toast if redirecting to onboarding (profile incomplete)
-      if (!window.location.pathname.includes('/onboarding')) {
-        showToast("Welcome Back!", "You have successfully logged in.", "success");
-      }
+      showToast("Welcome Back!", "You have successfully logged in.", "success");
       // onAuthStateChange will handle fetching profile
     } catch (error) {
       console.error("Sign in error:", error);
@@ -221,9 +218,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      if (!window.location.pathname.includes('/onboarding')) {
-        showToast("Logged Out", "You have been securely logged out.", "success");
-      }
+      showToast("Logged Out", "You have been securely logged out.", "success");
     } catch (error) {
       console.error("Sign out error:", error);
     }
