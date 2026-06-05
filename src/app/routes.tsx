@@ -10,6 +10,7 @@ import LandingPage from "./components/LandingPage";
 import PatientLogin from "./components/PatientLogin";
 import VerifyOTP from "./components/VerifyOTP";
 import PatientDashboard from "./components/PatientDashboard";
+import PatientOnboarding from "./components/PatientOnboarding";
 import PatientForgotPassword from "./components/PatientForgotPassword";
 import JoinQueue from "./components/JoinQueue";
 import LiveQueueMonitor from "./components/LiveQueueMonitor";
@@ -57,6 +58,14 @@ export const router = createBrowserRouter([
   },
 
   // Patient Portal (Protected)
+  {
+    path: "/patient/onboarding",
+    element: (
+      <PrivateRoute allowedRoles={["patient", "admin"]}>
+        <PatientOnboarding />
+      </PrivateRoute>
+    ),
+  },
   {
     path: "/patient",
     element: (
