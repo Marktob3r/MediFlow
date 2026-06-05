@@ -58,34 +58,8 @@ export default function PatientDashboard() {
     try {
       setLoading(true);
 
-      // 1. Check onboarding status first
-      const { data: profileData } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", user?.id)
-        .single();
-
-      const { data: patientData } = await supabase
-        .from("patients")
-        .select("*")
-        .eq("user_id", user?.id)
-        .single();
-
-      const isProfileComplete =
-        profileData?.date_of_birth &&
-        profileData?.gender &&
-        profileData?.address &&
-        profileData?.phone &&
-        patientData?.blood_type &&
-        patientData?.emergency_contact &&
-        patientData?.emergency_phone;
-
-      if (!isProfileComplete) {
-        navigate("/patient/onboarding", { replace: true });
-        return;
-      }
-
-      // 2. Profile is complete, now fetch the rest of the dashboard data
+      // Dashboard data is now fetched securely as the RequireOnboarding route guard
+      // ensures the user's profile is fully complete before reaching this component.
       const { data: queueData } = await supabase
         .from("queue_entries")
         .select("*")

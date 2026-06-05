@@ -25,6 +25,7 @@ import StaffInviteAccept from "./components/StaffInviteAccept";
 
 // Route Guards
 import PrivateRoute from "./components/PrivateRoute";
+import RequireOnboarding from "./components/RequireOnboarding";
 
 export const router = createBrowserRouter([
   // Public Routes
@@ -70,7 +71,9 @@ export const router = createBrowserRouter([
     path: "/patient",
     element: (
       <PrivateRoute allowedRoles={["patient", "admin"]}>
-        <PatientLayout />
+        <RequireOnboarding>
+          <PatientLayout />
+        </RequireOnboarding>
       </PrivateRoute>
     ),
     children: [
