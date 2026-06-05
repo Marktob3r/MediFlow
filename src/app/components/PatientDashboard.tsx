@@ -40,6 +40,7 @@ export default function PatientDashboard() {
   });
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(1);
   const [onboardingForm, setOnboardingForm] = useState({
     date_of_birth: "",
     gender: "",
@@ -270,192 +271,313 @@ export default function PatientDashboard() {
     );
   }
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto relative">
+  // ── Full-Page Onboarding Wizard ──────────────────────────────────────────
+  if (showOnboarding) {
+    const steps = [
+      { id: 1, title: "Personal Info", icon: User },
+      { id: 2, title: "Medical Info", icon: Heart },
+      { id: 3, title: "Emergency Contact", icon: Users },
+    ];
+    const TOTAL_STEPS = 3;
 
-      {/* Onboarding Modal Overlay */}
-      {showOnboarding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden my-4 sm:my-8"
+    const canProceedStep1 =
+      onboardingForm.date_of_birth &&
+      onboardingForm.gender &&
+      onboardingForm.phone.length === 11;
+    const canProceedStep2 =
+      onboardingForm.blood_type && onboardingForm.address.trim().length > 0;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col relative overflow-hidden">
+        {/* Ambient background circles */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-green-100 rounded-full opacity-40 -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-100 rounded-full opacity-40 translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
+
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-extrabold text-gray-900 text-lg">MediFlow</span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors font-medium"
           >
-            <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-5 sm:p-6 text-white">
-              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-extrabold mb-1">Complete Your Profile</h2>
-              <p className="text-green-100 text-sm">
-                Welcome to MediFlow! We need a few more details to complete your patient record before you can join the queue.
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+          <div className="w-full max-w-lg">
+
+            {/* Header */}
+            <motion.div
+              key={`header-${onboardingStep}`}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <p className="text-sm font-semibold text-green-600 mb-1">Step {onboardingStep} of {TOTAL_STEPS}</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+                {onboardingStep === 1 && "Tell us about yourself"}
+                {onboardingStep === 2 && "Medical details"}
+                {onboardingStep === 3 && "Who should we call?"}
+              </h1>
+              <p className="text-gray-500 text-sm mt-2">
+                {onboardingStep === 1 && "We need your basic personal information to create your patient record."}
+                {onboardingStep === 2 && "Your medical information helps our staff provide better care."}
+                {onboardingStep === 3 && "Add an emergency contact in case we need to reach someone on your behalf."}
               </p>
+            </motion.div>
+
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 mb-6">
+              {steps.map((s, i) => (
+                <div key={s.id} className="flex items-center gap-2 flex-1">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    s.id < onboardingStep
+                      ? "bg-green-500 text-white"
+                      : s.id === onboardingStep
+                      ? "bg-gray-900 text-white ring-4 ring-gray-900/10"
+                      : "bg-gray-100 text-gray-400"
+                  }`}>
+                    {s.id < onboardingStep ? <CheckCircle className="w-4 h-4" /> : s.id}
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div className="flex-1 h-0.5 rounded-full overflow-hidden bg-gray-100">
+                      <motion.div
+                        className="h-full bg-green-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: s.id < onboardingStep ? "100%" : "0%" }}
+                        transition={{ duration: 0.4 }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
-            <div className="p-5 sm:p-6">
-              {onboardingError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{onboardingError}</p>
-                </div>
-              )}
+            {/* Form card */}
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+              <AnimatePresence mode="wait">
 
-              <form onSubmit={handleSaveOnboarding} className="space-y-4">
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date of Birth *</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                {/* ── Step 1: Personal Info ── */}
+                {onboardingStep === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.25 }}
+                    className="p-6 sm:p-7 space-y-4"
+                  >
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Date of Birth</label>
                       <input
                         type="date"
                         required
                         value={onboardingForm.date_of_birth}
                         onChange={(e) => setOnboardingForm({ ...onboardingForm, date_of_birth: e.target.value })}
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Sex *</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <select
-                        required
-                        value={onboardingForm.gender}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, gender: e.target.value })}
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 appearance-none"
-                      >
-                        <option value="">Select Sex</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Phone Number *</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        required
-                        maxLength={11}
-                        pattern="\d{11}"
-                        title="Must be exactly 11 digits"
-                        value={onboardingForm.phone}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-                        placeholder="09XXXXXXXXX"
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Blood Type *</label>
-                    <div className="relative">
-                      <Heart className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <select
-                        required
-                        value={onboardingForm.blood_type}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, blood_type: e.target.value })}
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 appearance-none"
-                      >
-                        <option value="">Select Blood Type</option>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Home Address *</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        required
-                        value={onboardingForm.address}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, address: e.target.value })}
-                        placeholder="Full Address"
-                        className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-gray-100">
-                  <h3 className="font-bold text-gray-900 mb-3">Emergency Contact</h3>
-                  <div className="grid sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contact Name *</label>
-                      <div className="relative">
-                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          type="text"
-                          required
-                          value={onboardingForm.emergency_contact}
-                          onChange={(e) => setOnboardingForm({ ...onboardingForm, emergency_contact: e.target.value })}
-                          placeholder="Full Name"
-                          className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                        />
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Biological Sex</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {["Male", "Female"].map((sex) => (
+                          <button
+                            key={sex}
+                            type="button"
+                            onClick={() => setOnboardingForm({ ...onboardingForm, gender: sex })}
+                            className={`py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+                              onboardingForm.gender === sex
+                                ? "border-green-500 bg-green-50 text-green-700"
+                                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
+                            }`}
+                          >
+                            {sex === "Male" ? "♂ Male" : "♀ Female"}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contact Phone *</label>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number</label>
                       <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
                         <input
                           type="text"
                           required
                           maxLength={11}
-                          pattern="\d{11}"
-                          title="Must be exactly 11 digits"
+                          value={onboardingForm.phone}
+                          onChange={(e) => setOnboardingForm({ ...onboardingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                          placeholder="09XXXXXXXXX"
+                          className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        />
+                      </div>
+                      {onboardingForm.phone.length > 0 && onboardingForm.phone.length < 11 && (
+                        <p className="text-xs text-amber-500 mt-1.5 ml-1">{11 - onboardingForm.phone.length} more digits needed</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Step 2: Medical Info ── */}
+                {onboardingStep === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.25 }}
+                    className="p-6 sm:p-7 space-y-4"
+                  >
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Blood Type</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bt) => (
+                          <button
+                            key={bt}
+                            type="button"
+                            onClick={() => setOnboardingForm({ ...onboardingForm, blood_type: bt })}
+                            className={`py-2.5 rounded-xl border-2 font-bold text-sm transition-all ${
+                              onboardingForm.blood_type === bt
+                                ? "border-red-400 bg-red-50 text-red-600"
+                                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
+                            }`}
+                          >
+                            {bt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Home Address</label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={onboardingForm.address}
+                        onChange={(e) => setOnboardingForm({ ...onboardingForm, address: e.target.value })}
+                        placeholder="House No., Street, Barangay, City/Municipality, Province"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all resize-none"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Step 3: Emergency Contact ── */}
+                {onboardingStep === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.25 }}
+                    className="p-6 sm:p-7 space-y-4"
+                  >
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
+                      <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-700">
+                        Please provide someone we can contact in case of an emergency — a family member, spouse, or close friend.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={onboardingForm.emergency_contact}
+                        onChange={(e) => setOnboardingForm({ ...onboardingForm, emergency_contact: e.target.value })}
+                        placeholder="e.g. Maria Santos"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
+                        <input
+                          type="text"
+                          required
+                          maxLength={11}
                           value={onboardingForm.emergency_phone}
                           onChange={(e) => setOnboardingForm({ ...onboardingForm, emergency_phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                           placeholder="09XXXXXXXXX"
-                          className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                          className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
                         />
                       </div>
+                      {onboardingForm.emergency_phone.length > 0 && onboardingForm.emergency_phone.length < 11 && (
+                        <p className="text-xs text-amber-500 mt-1.5 ml-1">{11 - onboardingForm.emergency_phone.length} more digits needed</p>
+                      )}
                     </div>
-                  </div>
-                </div>
+                    {onboardingError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-red-700">{onboardingError}</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
 
-                <div className="flex gap-3 pt-4 mt-4 border-t border-gray-100">
+              </AnimatePresence>
+
+              {/* Navigation footer */}
+              <div className="px-6 sm:px-7 pb-6 flex gap-3">
+                {onboardingStep > 1 && (
                   <button
                     type="button"
-                    onClick={handleSignOut}
-                    className="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-2xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-sm"
+                    onClick={() => setOnboardingStep(s => s - 1)}
+                    className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
                   >
-                    <LogOut className="w-4 h-4" /> Cancel & Logout
+                    ← Back
                   </button>
+                )}
+                {onboardingStep < TOTAL_STEPS ? (
                   <button
-                    type="submit"
-                    disabled={savingOnboarding}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 rounded-2xl shadow hover:shadow-lg transition-all disabled:opacity-70 flex items-center justify-center gap-2 text-sm"
+                    type="button"
+                    disabled={
+                      (onboardingStep === 1 && !canProceedStep1) ||
+                      (onboardingStep === 2 && !canProceedStep2)
+                    }
+                    onClick={() => setOnboardingStep(s => s + 1)}
+                    className="flex-1 py-3 rounded-2xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Continue →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={savingOnboarding || !onboardingForm.emergency_contact || onboardingForm.emergency_phone.length < 11}
+                    onClick={handleSaveOnboarding}
+                    className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-sm shadow hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {savingOnboarding ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Saving...
-                      </>
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
                     ) : (
-                      "Complete Setup"
+                      "Complete Setup ✓"
                     )}
                   </button>
-                </div>
-              </form>
+                )}
+              </div>
             </div>
-          </motion.div>
+
+            <p className="text-center text-xs text-gray-400 mt-4">
+              Your information is stored securely and is only accessible to authorised clinic staff.
+            </p>
+          </div>
         </div>
-      )}
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
 
       <div className="flex justify-between items-center mb-8">
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
