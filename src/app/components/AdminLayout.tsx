@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
+import RealTimeClock from "./RealTimeClock";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -210,6 +211,9 @@ export default function AdminLayout() {
             </h2>
           </div>
 
+          <div className="flex items-center ml-auto">
+            <RealTimeClock />
+          </div>
         </header>
 
         {/* Page Content */}
