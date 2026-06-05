@@ -38,6 +38,10 @@ import {
 } from "recharts";
 import { supabase } from "../../config/supabase";
 import { useAuth } from "../../contexts/AuthContext";
+import { getStaffList, StaffUser, resendInvite } from "../../services/adminApi";
+import InviteStaffModal from "./InviteStaffModal";
+import EditStaffModal from "./EditStaffModal";
+import { useToast } from "../../contexts/ToastContext";
 
 type AdminTab = "analytics" | "accounts" | "queue-controls" | "settings";
 
@@ -59,8 +63,14 @@ export default function AdminDashboard() {
   const [serviceDistribution, setServiceDistribution] = useState<any[]>([]);
   const [hourlyDistribution, setHourlyDistribution] = useState<any[]>([]);
   const [waitTimeTrend, setWaitTimeTrend] = useState<any[]>([]);
-  const [staffAccounts, setStaffAccounts] = useState<any[]>([]);
+  const [staffAccounts, setStaffAccounts] = useState<StaffUser[]>([]);
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  
+  // Modals state
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [editModalStaff, setEditModalStaff] = useState<StaffUser | null>(null);
+  
+  const { showToast } = useToast();
   const location = useLocation();
 
   // Settings state
@@ -286,21 +296,20 @@ export default function AdminDashboard() {
   };
 
   const fetchStaffAccounts = async () => {
-    const { data } = await supabase
-      .from("patients")
-      .select("*")
-      .in("role", ["staff", "admin"]);
+    try {
+      const { users } = await getStaffList();
+      setStaffAccounts(users);
+    } catch (err) {
+      console.error("Failed to fetch staff accounts:", err);
+    }
+  };
 
-    if (data) {
-      setStaffAccounts(data.map(account => ({
-        id: account.id,
-        name: `${account.first_name} ${account.last_name}`,
-        role: account.role === "admin" ? "Admin" : "Staff",
-        department: account.role === "admin" ? "Management" : "Front Desk",
-        status: account.is_active ? "active" : "inactive",
-        lastLogin: account.last_login ? new Date(account.last_login).toLocaleDateString() : "Never",
-        email: account.email,
-      })));
+  const handleResendInvite = async (email: string) => {
+    try {
+      await resendInvite(email);
+      showToast("Success", `Invitation resent to ${email}`, "success");
+    } catch (err: any) {
+      showToast("Error", err.message || "Failed to resend invite", "error");
     }
   };
 
@@ -434,7 +443,10 @@ export default function AdminDashboard() {
           </div>
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">{staffAccounts.length} staff accounts</p>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-4 py-2.5 rounded-2xl shadow-md text-sm">
+            <button 
+              onClick={() => setIsInviteModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-4 py-2.5 rounded-2xl shadow-md text-sm hover:shadow-lg transition-all"
+            >
               <UserPlus className="w-4 h-4" />
               Add Staff Account
             </button>
@@ -470,36 +482,47 @@ export default function AdminDashboard() {
                       <tr key={staff.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${staff.role === "Admin" ? "bg-purple-500" : "bg-green-500"
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${staff.role === "admin" ? "bg-purple-500" : "bg-green-500"
                               }`}>
-                              {staff.name.charAt(0)}
+                              {staff.firstName.charAt(0)}
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-gray-900">{staff.name}</p>
+                              <p className="text-sm font-semibold text-gray-900">{staff.firstName} {staff.lastName}</p>
                               <p className="text-xs text-gray-400">{staff.email}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${staff.role === "Admin" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${staff.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
                             }`}>
-                            {staff.role}
+                            {staff.role === "admin" ? "Admin" : "Staff"}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`flex items-center gap-1.5 text-xs font-semibold ${staff.status === "active" ? "text-green-600" : "text-gray-400"}`}>
-                            <span className={`w-2 h-2 rounded-full ${staff.status === "active" ? "bg-green-500" : "bg-gray-300"}`} />
-                            {staff.status === "active" ? "Active" : "Inactive"}
+                          <span className={`flex items-center gap-1.5 text-xs font-semibold ${staff.status === "active" ? "text-green-600" : staff.status === "pending" ? "text-amber-600" : "text-gray-400"}`}>
+                            <span className={`w-2 h-2 rounded-full ${staff.status === "active" ? "bg-green-500" : staff.status === "pending" ? "bg-amber-500" : "bg-gray-300"}`} />
+                            {staff.status === "active" ? "Active" : staff.status === "pending" ? "Pending Invite" : "Inactive"}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-xs text-gray-400">{staff.lastLogin}</td>
+                        <td className="px-5 py-4 text-xs text-gray-400">
+                          {staff.lastSignIn ? new Date(staff.lastSignIn).toLocaleDateString() : "Never"}
+                        </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            <button className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                            {staff.status === "pending" && (
+                              <button 
+                                onClick={() => handleResendInvite(staff.email)}
+                                title="Resend Invite"
+                                className="p-1.5 rounded-xl hover:bg-amber-50 text-amber-500 transition-colors text-xs font-semibold"
+                              >
+                                Resend
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => setEditModalStaff(staff)}
+                              className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
                               <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500">
-                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -717,6 +740,18 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
       )}
+      {/* Modals */}
+      <InviteStaffModal 
+        isOpen={isInviteModalOpen} 
+        onClose={() => setIsInviteModalOpen(false)} 
+        onSuccess={fetchStaffAccounts} 
+      />
+      <EditStaffModal 
+        isOpen={editModalStaff !== null} 
+        onClose={() => setEditModalStaff(null)} 
+        onSuccess={fetchStaffAccounts} 
+        staff={editModalStaff} 
+      />
     </div>
   );
 }

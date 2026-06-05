@@ -19,6 +19,8 @@ import StaffLogin from "./components/StaffLogin";
 import StaffDashboard from "./components/StaffDashboard";
 import WalkInRegistration from "./components/WalkInRegistration";
 import AdminDashboard from "./components/AdminDashboard";
+import StaffForgotPassword from "./components/StaffForgotPassword";
+import StaffInviteAccept from "./components/StaffInviteAccept";
 
 // Route Guards
 import PrivateRoute from "./components/PrivateRoute";
@@ -44,6 +46,14 @@ export const router = createBrowserRouter([
   {
     path: "/staff/login",
     element: <StaffLogin />,
+  },
+  {
+    path: "/staff/forgot-password",
+    element: <StaffForgotPassword />,
+  },
+  {
+    path: "/staff/accept-invite",
+    element: <StaffInviteAccept />,
   },
 
   // Patient Portal (Protected)

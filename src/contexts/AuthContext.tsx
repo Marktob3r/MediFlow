@@ -58,7 +58,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error("Error fetching user data:", profileError || roleError);
       }
 
+      let is_active = true;
+
       const role: UserRole = roleData?.role || "patient";
+
+      if (role === "staff" || role === "admin") {
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("is_active")
+          .eq("user_id", userId)
+          .single();
+        if (staffData && staffData.is_active === false) {
+          is_active = false;
+        }
+      }
+
+      if (!is_active) {
+        // Sign out deactivated users immediately
+        await supabase.auth.signOut();
+        setUser(null);
+        setUserRole(null);
+        setLoading(false);
+        return;
+      }
 
       const authUser: AuthUser = {
         id: userId,
@@ -67,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         last_name: profileData?.last_name,
         phone: profileData?.phone,
         role: role,
-        is_active: true,
+        is_active: is_active,
       };
 
       setUser(authUser);
