@@ -143,13 +143,12 @@ export default function PatientOnboarding() {
   const canProceedStep2 = onboardingForm.blood_type && onboardingForm.address.trim().length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col relative">
+    <div className="fixed inset-0 overflow-y-auto bg-gradient-to-br from-green-50 via-white to-emerald-50">
       {/* Ambient background circles */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-green-100 rounded-full opacity-40 -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-100 rounded-full opacity-40 translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 pt-6 pb-4 relative z-10">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-gray-100">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow">
             <Activity className="w-5 h-5 text-white" />
@@ -158,7 +157,7 @@ export default function PatientOnboarding() {
         </div>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors font-medium"
+          className="flex items-center gap-1.5 text-sm text-gray-600 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Sign out
@@ -166,7 +165,7 @@ export default function PatientOnboarding() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 relative z-10">
+      <div className="flex flex-col items-center justify-center px-4 py-8 min-h-[calc(100vh-64px)]">
         <div className="w-full max-w-lg">
 
           {/* Header */}
@@ -189,8 +188,8 @@ export default function PatientOnboarding() {
             </p>
           </motion.div>
 
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-6">
+          {/* Step indicator — centered */}
+          <div className="flex items-center justify-center gap-2 mb-6 max-w-xs mx-auto">
             {steps.map((s, i) => (
               <div key={s.id} className="flex items-center gap-2 flex-1">
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
@@ -250,7 +249,9 @@ export default function PatientOnboarding() {
                           onClick={() => setOnboardingForm({ ...onboardingForm, gender: sex })}
                           className={`py-3.5 rounded-2xl border-2 font-semibold text-sm transition-all ${
                             onboardingForm.gender === sex
-                              ? "border-green-500 bg-green-50 text-green-700"
+                              ? sex === "Male"
+                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                : "border-pink-400 bg-pink-50 text-pink-600"
                               : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
                           }`}
                         >
