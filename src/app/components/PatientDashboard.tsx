@@ -288,7 +288,7 @@ export default function PatientDashboard() {
       onboardingForm.blood_type && onboardingForm.address.trim().length > 0;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col relative overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col overflow-y-auto">
         {/* Ambient background circles */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-green-100 rounded-full opacity-40 -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-100 rounded-full opacity-40 translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
