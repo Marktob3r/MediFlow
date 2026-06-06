@@ -3,7 +3,7 @@
 ## Team Composition:
 
 1. Mark Christian Gabriel - Frontend & Backend
-2. John Rayniel Bonifacio - Frontend & Backend
+2. John Rayniel Bonifacio - Documentation
 
 ## Target Beneficiary:  
 Samuel P. Dizon Medical Clinic Staffs & Patients 
