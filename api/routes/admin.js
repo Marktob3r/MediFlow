@@ -76,17 +76,34 @@ router.post('/invite', async (req, res) => {
 // List all staff/admin users
 router.get('/users', async (req, res) => {
   try {
-    // We need to gather data from user_roles, user_profiles, staff, and auth.users
-    // First get users with staff/admin roles
+    // Primary source: user_roles table
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('user_id, role')
       .in('role', ['staff', 'admin']);
 
-    if (roleError) return res.status(500).json({ error: roleError.message });
+    if (roleError) {
+      console.error('user_roles fetch error:', roleError);
+      return res.status(500).json({ error: roleError.message });
+    }
 
-    const userIds = roleData.map(r => r.user_id);
-    
+    // Secondary source: staff table — catches invited users whose trigger may not have run
+    const { data: staffTableData } = await supabaseAdmin
+      .from('staff')
+      .select('user_id');
+
+    // Union of both sets of user IDs (deduplicated)
+    const roleUserIds = new Set((roleData || []).map(r => r.user_id));
+    const staffOnlyIds = (staffTableData || [])
+      .map(s => s.user_id)
+      .filter(id => !roleUserIds.has(id));
+
+    // For staff-only IDs (no role row yet), treat as staff
+    const extraRoles = staffOnlyIds.map(id => ({ user_id: id, role: 'staff' }));
+    const allRoleData = [...(roleData || []), ...extraRoles];
+
+    const userIds = allRoleData.map(r => r.user_id);
+
     if (userIds.length === 0) {
       return res.status(200).json({ users: [] });
     }
@@ -97,7 +114,10 @@ router.get('/users', async (req, res) => {
       .select('user_id, email, first_name, last_name, created_at')
       .in('user_id', userIds);
 
-    if (profileError) return res.status(500).json({ error: profileError.message });
+    if (profileError) {
+      console.error('user_profiles fetch error:', profileError);
+      return res.status(500).json({ error: profileError.message });
+    }
 
     // Get staff details
     const { data: staffData, error: staffError } = await supabaseAdmin
@@ -113,7 +133,7 @@ router.get('/users', async (req, res) => {
     if (authError) return res.status(500).json({ error: authError.message });
 
     // Combine the data
-    const users = roleData.map(role => {
+    const users = allRoleData.map(role => {
       const profile = profileData.find(p => p.user_id === role.user_id) || {};
       const staff = staffData.find(s => s.user_id === role.user_id) || {};
       const auth = authData.users.find(u => u.id === role.user_id) || {};
