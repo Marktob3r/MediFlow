@@ -11,6 +11,7 @@ import {
   Download,
   Calendar,
   Shield,
+  Building2,
   UserPlus,
   Trash2,
   Edit2,
@@ -134,23 +135,24 @@ export default function AdminDashboard() {
       .eq("id", settingsRowId);
     setSettingsSaving(false);
     if (!error) {
-      setSettingsSaved(true);
-      setTimeout(() => setSettingsSaved(false), 3000);
+      showToast("Settings Saved", "Clinic contact information has been successfully updated.", "success");
+    } else {
+      showToast("Error", error.message || "Failed to update settings.", "error");
     }
   };
 
   const handleChangePassword = async () => {
     setPasswordError("");
-    if (!currentPassword) {
-      setPasswordError("Please enter your current password.");
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showToast("Validation Error", "Please fill in all password fields.", "error");
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters.");
+    if (newPassword.length < 6) {
+      showToast("Validation Error", "New password must be at least 6 characters.", "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match.");
+      showToast("Validation Error", "Passwords do not match.", "error");
       return;
     }
     setPasswordSaving(true);
@@ -161,19 +163,18 @@ export default function AdminDashboard() {
     });
     if (signInError) {
       setPasswordSaving(false);
-      setPasswordError("Current password is incorrect.");
+      showToast("Authentication Error", "Current password is incorrect.", "error");
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPasswordSaving(false);
     if (error) {
-      setPasswordError(error.message);
+      showToast("Error", error.message, "error");
     } else {
-      setPasswordSaved(true);
+      showToast("Security Updated", "Your password has been changed successfully.", "success");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setTimeout(() => setPasswordSaved(false), 3000);
     }
   };
 
@@ -643,99 +644,128 @@ export default function AdminDashboard() {
       {activeTab === "settings" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="mb-2">
-            <h1 className="font-bold text-gray-900">Clinic Configurations</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage global settings like operating hours and contact information.</p>
+            <h1 className="font-bold text-gray-900 text-2xl tracking-tight">System Settings</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage global clinic configurations and admin security.</p>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Clinic Configurations */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-50 flex-grow">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 leading-tight">Clinic Details</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Contact and location info</p>
+                  </div>
+                </div>
 
-
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-5">Clinic Contact Information</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contact Number</label>
-                <input
-                  type="text"
-                  value={clinicSettings.phone}
-                  onChange={(e) => setClinicSettings(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Phone Number</label>
+                      <input
+                        type="text"
+                        value={clinicSettings.phone}
+                        onChange={(e) => setClinicSettings(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Support Email</label>
+                      <input
+                        type="email"
+                        value={clinicSettings.email}
+                        onChange={(e) => setClinicSettings(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Location Address</label>
+                    <textarea
+                      rows={2}
+                      value={clinicSettings.address}
+                      onChange={(e) => setClinicSettings(prev => ({ ...prev, address: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all resize-none"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Support Email Address</label>
-                <input
-                  type="email"
-                  value={clinicSettings.email}
-                  onChange={(e) => setClinicSettings(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Clinic Location Address</label>
-                <textarea
-                  rows={3}
-                  value={clinicSettings.address}
-                  onChange={(e) => setClinicSettings(prev => ({ ...prev, address: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
-                />
+              <div className="bg-gray-50/50 p-4 border-t border-gray-100 mt-auto">
+                <button
+                  onClick={saveClinicSettings}
+                  disabled={settingsSaving}
+                  className="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl shadow-sm text-sm hover:bg-blue-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  {settingsSaving ? (
+                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Saving...</span></>
+                  ) : "Save Details"}
+                </button>
               </div>
             </div>
-            <div className="mt-5 pt-5 border-t border-gray-100">
-              <button
-                onClick={saveClinicSettings}
-                disabled={settingsSaving}
-                className="bg-green-500 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-sm text-sm hover:bg-green-600 transition-colors disabled:opacity-60"
-              >
-                {settingsSaving ? "Saving…" : settingsSaved ? "✓ Saved!" : "Save Contact Information"}
-              </button>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-5">Admin Account Security</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Current Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+            {/* Admin Security */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-50 flex-grow">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 leading-tight">Admin Security</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Update your master password</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Current Password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition-all"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">New Password</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 6 chars"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Confirm New</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repeat new"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
+              <div className="bg-gray-50/50 p-4 border-t border-gray-100 mt-auto">
+                <button
+                  onClick={handleChangePassword}
+                  disabled={passwordSaving}
+                  className="w-full bg-slate-900 text-white font-bold py-3 rounded-2xl shadow-sm text-sm hover:bg-slate-800 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  {passwordSaving ? (
+                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Updating...</span></>
+                  ) : "Update Security"}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
-              </div>
-              {passwordError && (
-                <p className="text-xs text-red-500 font-medium">{passwordError}</p>
-              )}
-            </div>
-            <div className="mt-5 pt-5 border-t border-gray-100 flex justify-end">
-              <button
-                onClick={handleChangePassword}
-                disabled={passwordSaving}
-                className="bg-gray-900 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-sm text-sm hover:bg-gray-800 transition-colors disabled:opacity-60"
-              >
-                {passwordSaving ? "Updating…" : passwordSaved ? "✓ Password Updated!" : "Change Password"}
-              </button>
             </div>
           </div>
         </motion.div>
