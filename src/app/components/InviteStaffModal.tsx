@@ -92,24 +92,20 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-5">
-                {/* Subtle pattern */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none"
-                  style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-
+              <div className="relative px-6 py-5 border-b border-gray-100">
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-500/20 border border-green-500/30 rounded-2xl flex items-center justify-center">
-                      <UserPlus className="w-5 h-5 text-green-400" />
+                    <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
+                      <UserPlus className="w-5 h-5 text-green-600" />
                     </div>
                     <div>
-                      <h2 className="font-bold text-white text-base leading-tight">Invite Staff Member</h2>
-                      <p className="text-slate-400 text-xs mt-0.5">Send a secure email invitation</p>
+                      <h2 className="font-bold text-gray-900 text-base leading-tight">Invite Staff Member</h2>
+                      <p className="text-gray-500 text-xs mt-0.5">Send a secure email invitation</p>
                     </div>
                   </div>
                   <button
                     onClick={handleClose}
-                    className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                    className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>

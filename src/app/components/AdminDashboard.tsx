@@ -453,86 +453,78 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase">Staff</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase">Role</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase">Last Login</th>
-                    <th className="px-5 py-3.5 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {staffAccounts.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
-                          <Shield className="w-8 h-8 text-gray-300" />
-                        </div>
-                        <h4 className="text-gray-900 font-bold mb-1">No staff accounts found</h4>
-                        <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                          Get started by adding staff accounts to manage the clinic operations.
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    staffAccounts.map((staff, i) => (
-                      <tr key={staff.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${staff.role === "admin" ? "bg-purple-500" : "bg-green-500"
-                              }`}>
-                              {staff.firstName.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">{staff.firstName} {staff.lastName}</p>
-                              <p className="text-xs text-gray-400">{staff.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${staff.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
-                            }`}>
-                            {staff.role === "admin" ? "Admin" : "Staff"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`flex items-center gap-1.5 text-xs font-semibold ${staff.status === "active" ? "text-green-600" : staff.status === "pending" ? "text-amber-600" : "text-gray-400"}`}>
-                            <span className={`w-2 h-2 rounded-full ${staff.status === "active" ? "bg-green-500" : staff.status === "pending" ? "bg-amber-500" : "bg-gray-300"}`} />
-                            {staff.status === "active" ? "Active" : staff.status === "pending" ? "Pending Invite" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-xs text-gray-400">
-                          {staff.lastSignIn ? new Date(staff.lastSignIn).toLocaleDateString() : "Never"}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {staff.status === "pending" && (
-                              <button 
-                                onClick={() => handleResendInvite(staff.email)}
-                                title="Resend Invite"
-                                className="p-1.5 rounded-xl hover:bg-amber-50 text-amber-500 transition-colors text-xs font-semibold"
-                              >
-                                Resend
-                              </button>
-                            )}
-                            <button 
-                              onClick={() => setEditModalStaff(staff)}
-                              className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {staffAccounts.length === 0 ? (
+              <div className="col-span-full bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center flex flex-col items-center justify-center">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                  <Shield className="w-8 h-8 text-gray-300" />
+                </div>
+                <h4 className="text-gray-900 font-bold mb-2 text-lg">No staff accounts found</h4>
+                <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                  Get started by adding staff accounts to manage the clinic operations.
+                </p>
+                <button
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="mt-6 bg-green-500 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-sm text-sm hover:bg-green-600 transition-colors flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" /> Add Staff Account
+                </button>
+              </div>
+            ) : (
+              staffAccounts.map((staff) => (
+                <div key={staff.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow flex flex-col relative group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex gap-3 items-center">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm ${staff.role === "admin" ? "bg-purple-500" : "bg-blue-500"}`}>
+                        {staff.firstName.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 leading-tight">{staff.firstName} {staff.lastName}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">{staff.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${staff.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                        {staff.role === "admin" ? "Admin" : "Staff"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-5 mt-2 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div>
+                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Status</p>
+                       <span className={`flex items-center gap-1.5 text-xs font-semibold ${staff.status === "active" ? "text-green-600" : staff.status === "pending" ? "text-amber-600" : "text-gray-400"}`}>
+                         <span className={`w-2 h-2 rounded-full ${staff.status === "active" ? "bg-green-500" : staff.status === "pending" ? "bg-amber-500" : "bg-gray-300"}`} />
+                         {staff.status === "active" ? "Active" : staff.status === "pending" ? "Pending" : "Inactive"}
+                       </span>
+                    </div>
+                    <div>
+                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Last Login</p>
+                       <p className="text-xs font-medium text-gray-600">
+                         {staff.lastSignIn ? new Date(staff.lastSignIn).toLocaleDateString() : "Never"}
+                       </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-gray-50">
+                    {staff.status === "pending" && (
+                      <button 
+                        onClick={() => handleResendInvite(staff.email)}
+                        className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-600 transition-colors text-xs font-bold"
+                      >
+                        Resend Invite
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setEditModalStaff(staff)}
+                      className="px-4 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Edit Profile
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
       )}
