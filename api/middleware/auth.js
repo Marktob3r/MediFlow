@@ -7,8 +7,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env");
-  process.exit(1);
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables");
+  // Don't process.exit(1) here because it crashes serverless functions on Vercel
 }
 
 // Export the admin client for use in routes

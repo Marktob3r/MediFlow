@@ -76,31 +76,33 @@ router.post('/invite', async (req, res) => {
 // List all staff/admin users
 router.get('/users', async (req, res) => {
   try {
-    // Primary source: user_roles table
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Primary source: get ALL roles to know who is an admin vs staff
+    const { data: allRoles, error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .select('user_id, role')
-      .in('role', ['staff', 'admin']);
+      .select('user_id, role');
 
     if (roleError) {
       console.error('user_roles fetch error:', roleError);
       return res.status(500).json({ error: roleError.message });
     }
 
+    const adminUserIds = new Set((allRoles || []).filter(r => r.role === 'admin').map(r => r.user_id));
+    const staffRoleData = (allRoles || []).filter(r => r.role === 'staff');
+
     // Secondary source: staff table — catches invited users whose trigger may not have run
     const { data: staffTableData } = await supabaseAdmin
       .from('staff')
       .select('user_id');
 
-    // Union of both sets of user IDs (deduplicated)
-    const roleUserIds = new Set((roleData || []).map(r => r.user_id));
+    // Filter out users who are already explicitly marked as 'admin'
+    const roleUserIds = new Set(staffRoleData.map(r => r.user_id));
     const staffOnlyIds = (staffTableData || [])
       .map(s => s.user_id)
-      .filter(id => !roleUserIds.has(id));
+      .filter(id => !roleUserIds.has(id) && !adminUserIds.has(id));
 
     // For staff-only IDs (no role row yet), treat as staff
     const extraRoles = staffOnlyIds.map(id => ({ user_id: id, role: 'staff' }));
-    const allRoleData = [...(roleData || []), ...extraRoles];
+    const allRoleData = [...staffRoleData, ...extraRoles];
 
     const userIds = allRoleData.map(r => r.user_id);
 
@@ -130,24 +132,29 @@ router.get('/users', async (req, res) => {
     // Get auth users for last_sign_in_at
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
-    if (authError) return res.status(500).json({ error: authError.message });
+    let authUsersList = [];
+    if (authError) {
+      console.warn("Warning: Could not fetch auth.users (last sign in times may be missing):", authError.message);
+    } else {
+      authUsersList = authData?.users || [];
+    }
 
     // Combine the data
     const users = allRoleData.map(role => {
-      const profile = profileData.find(p => p.user_id === role.user_id) || {};
-      const staff = staffData.find(s => s.user_id === role.user_id) || {};
-      const auth = authData.users.find(u => u.id === role.user_id) || {};
+      const profile = profileData?.find(p => p.user_id === role.user_id) || {};
+      const staff = staffData?.find(s => s.user_id === role.user_id) || {};
+      const auth = authUsersList.find(u => u.id === role.user_id) || {};
 
       return {
         id: role.user_id,
-        email: profile.email || auth.email,
+        email: profile.email || auth.email || 'Unknown',
         firstName: profile.first_name || '',
         lastName: profile.last_name || '',
         role: role.role,
         department: staff.department || 'N/A',
         specialization: staff.specialization || '',
         isActive: staff.is_active !== false, // Default true if undefined
-        createdAt: profile.created_at || auth.created_at,
+        createdAt: profile.created_at || auth.created_at || new Date().toISOString(),
         lastSignIn: auth.last_sign_in_at || null,
         status: auth.invited_at && !auth.last_sign_in_at ? 'pending' : (staff.is_active === false ? 'inactive' : 'active')
       };
