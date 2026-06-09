@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { inviteStaffMember } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
+import PasswordConfirmModal from "./PasswordConfirmModal";
 
 type InviteStaffModalProps = {
   isOpen: boolean;
@@ -35,6 +36,7 @@ const ROLE_OPTIONS = [
 export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModalProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -49,8 +51,7 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
 
   const handleClose = () => { onClose(); reset(); };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performInvite = async () => {
     setLoading(true);
     try {
       await inviteStaffMember(formData);
@@ -64,9 +65,22 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Check if inviting as admin
+    if (formData.role === "admin") {
+      setShowPasswordPrompt(true);
+      return;
+    }
+
+    await performInvite();
+  };
+
   const selectedRole = ROLE_OPTIONS.find(r => r.value === formData.role)!;
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -286,5 +300,20 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
         </>
       )}
     </AnimatePresence>
+    
+    {/* The password confirmation modal needs to be rendered parallel so its z-index overlay stacks correctly above this modal */}
+    <PasswordConfirmModal
+      isOpen={showPasswordPrompt}
+      onClose={() => setShowPasswordPrompt(false)}
+      onConfirm={() => {
+        setShowPasswordPrompt(false);
+        performInvite();
+      }}
+      actionTitle="Invite Admin Account"
+      actionDescription={`Are you sure you want to invite ${formData.email} as an Admin? They will have full access to system settings and all staff accounts once they accept the invitation.`}
+      confirmButtonText="Invite Admin"
+      isDestructive={false}
+    />
+    </>
   );
 }
