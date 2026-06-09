@@ -156,7 +156,7 @@ router.get('/users', async (req, res) => {
         isActive: staff.is_active !== false, // Default true if undefined
         createdAt: profile.created_at || auth.created_at || new Date().toISOString(),
         lastSignIn: auth.last_sign_in_at || null,
-        status: auth.invited_at && !auth.last_sign_in_at ? 'pending' : (staff.is_active === false ? 'inactive' : 'active')
+        status: !auth.last_sign_in_at ? 'pending' : (staff.is_active === false ? 'inactive' : 'active')
       };
     });
 

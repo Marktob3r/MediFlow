@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Shield, User, Save } from "lucide-react";
+import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Save } from "lucide-react";
 import { updateStaffMember, StaffUser } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
-import PasswordConfirmModal from "./PasswordConfirmModal";
 
 type EditStaffModalProps = {
   isOpen: boolean;
@@ -13,23 +12,6 @@ type EditStaffModalProps = {
 };
 
 const DEPARTMENTS = ["Front Desk", "Medical", "Laboratory", "Pharmacy", "Administration"];
-
-const ROLE_OPTIONS = [
-  {
-    value: "staff",
-    label: "Staff",
-    description: "Can manage patients & queue",
-    color: "blue",
-    icon: User,
-  },
-  {
-    value: "admin",
-    label: "Admin",
-    description: "Full system access",
-    color: "purple",
-    icon: Shield,
-  },
-];
 
 export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: EditStaffModalProps) {
   const { showToast } = useToast();
@@ -57,7 +39,8 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     }
   }, [staff]);
 
-  const performSave = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!cachedStaff) return;
     setLoading(true);
     try {
@@ -67,12 +50,7 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
         specialization: formData.specialization,
         isActive: formData.isActive,
       });
-      // Global toast for promotion check
-      if (formData.role === "admin" && cachedStaff.role !== "admin") {
-        showToast("Promoted", `Staff account ${cachedStaff.firstName} ${cachedStaff.lastName} has been promoted to Admin.`, "success");
-      } else {
-        showToast("Updated ✓", "Staff member updated successfully.", "success");
-      }
+      showToast("Updated ✓", "Staff member updated successfully.", "success");
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -82,23 +60,9 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cachedStaff) return;
-    
-    // Check if promoting to admin
-    if (formData.role === "admin" && cachedStaff.role !== "admin") {
-      setShowPasswordPrompt(true);
-      return;
-    }
-
-    await performSave();
-  };
-
   if (!cachedStaff) return null;
 
   return (
-    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -154,51 +118,6 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
                   </div>
                 </div>
 
-                {/* Role selector — pill toggle */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                    Role <span className="text-red-400">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {ROLE_OPTIONS.map(role => {
-                      const Icon = role.icon;
-                      const isSelected = formData.role === role.value;
-                      return (
-                        <button
-                          key={role.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, role: role.value })}
-                          className={`flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all ${
-                            isSelected
-                              ? role.value === "admin"
-                                ? "border-purple-500 bg-purple-50"
-                                : "border-blue-500 bg-blue-50"
-                              : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            isSelected
-                              ? role.value === "admin" ? "bg-purple-100" : "bg-blue-100"
-                              : "bg-gray-100"
-                          }`}>
-                            <Icon className={`w-4 h-4 ${
-                              isSelected
-                                ? role.value === "admin" ? "text-purple-600" : "text-blue-600"
-                                : "text-gray-400"
-                            }`} />
-                          </div>
-                          <div>
-                            <p className={`text-sm font-bold leading-tight ${
-                              isSelected
-                                ? role.value === "admin" ? "text-purple-700" : "text-blue-700"
-                                : "text-gray-600"
-                            }`}>{role.label}</p>
-                            <p className="text-xs text-gray-400 leading-tight mt-0.5">{role.description}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 {/* Department + Specialization */}
@@ -307,22 +226,5 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
         </>
       )}
     </AnimatePresence>
-
-    {/* The password confirmation modal needs to be rendered parallel so its z-index overlay stacks correctly above this modal */}
-    {cachedStaff && (
-      <PasswordConfirmModal
-        isOpen={showPasswordPrompt}
-        onClose={() => setShowPasswordPrompt(false)}
-        onConfirm={() => {
-          setShowPasswordPrompt(false);
-          performSave();
-        }}
-        actionTitle="Promote to Admin"
-        actionDescription={`Are you sure you want to promote ${cachedStaff.firstName} ${cachedStaff.lastName} to Admin? They will have full access to system settings and all staff accounts.`}
-        confirmButtonText="Promote to Admin"
-        isDestructive={false}
-      />
-    )}
-    </>
   );
 }

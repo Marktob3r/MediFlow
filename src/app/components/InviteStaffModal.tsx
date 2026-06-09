@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  UserPlus, Mail, X, Shield, Building2, Stethoscope,
-  ChevronDown, Send, User, AlertCircle
+  UserPlus, Mail, X, Building2, Stethoscope,
+  ChevronDown, Send, AlertCircle
 } from "lucide-react";
 import { inviteStaffMember } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
-import PasswordConfirmModal from "./PasswordConfirmModal";
 
 type InviteStaffModalProps = {
   isOpen: boolean;
@@ -16,27 +15,9 @@ type InviteStaffModalProps = {
 
 const DEPARTMENTS = ["Front Desk", "Medical", "Laboratory", "Pharmacy", "Administration"];
 
-const ROLE_OPTIONS = [
-  {
-    value: "staff",
-    label: "Staff",
-    description: "Can manage patients & queue",
-    color: "blue",
-    icon: User,
-  },
-  {
-    value: "admin",
-    label: "Admin",
-    description: "Full system access",
-    color: "purple",
-    icon: Shield,
-  },
-];
-
 export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModalProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -51,7 +32,8 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
 
   const handleClose = () => { onClose(); reset(); };
 
-  const performInvite = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     try {
       await inviteStaffMember(formData);
@@ -65,22 +47,7 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check if inviting as admin
-    if (formData.role === "admin") {
-      setShowPasswordPrompt(true);
-      return;
-    }
-
-    await performInvite();
-  };
-
-  const selectedRole = ROLE_OPTIONS.find(r => r.value === formData.role)!;
-
   return (
-    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -176,51 +143,6 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                   </div>
                 </div>
 
-                {/* Role selector — pill toggle */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                    Role <span className="text-red-400">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {ROLE_OPTIONS.map(role => {
-                      const Icon = role.icon;
-                      const isSelected = formData.role === role.value;
-                      return (
-                        <button
-                          key={role.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, role: role.value })}
-                          className={`flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all ${
-                            isSelected
-                              ? role.value === "admin"
-                                ? "border-purple-500 bg-purple-50"
-                                : "border-blue-500 bg-blue-50"
-                              : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            isSelected
-                              ? role.value === "admin" ? "bg-purple-100" : "bg-blue-100"
-                              : "bg-gray-100"
-                          }`}>
-                            <Icon className={`w-4 h-4 ${
-                              isSelected
-                                ? role.value === "admin" ? "text-purple-600" : "text-blue-600"
-                                : "text-gray-400"
-                            }`} />
-                          </div>
-                          <div>
-                            <p className={`text-sm font-bold leading-tight ${
-                              isSelected
-                                ? role.value === "admin" ? "text-purple-700" : "text-blue-700"
-                                : "text-gray-600"
-                            }`}>{role.label}</p>
-                            <p className="text-xs text-gray-400 leading-tight mt-0.5">{role.description}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 {/* Department + Specialization */}
@@ -300,20 +222,5 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
         </>
       )}
     </AnimatePresence>
-    
-    {/* The password confirmation modal needs to be rendered parallel so its z-index overlay stacks correctly above this modal */}
-    <PasswordConfirmModal
-      isOpen={showPasswordPrompt}
-      onClose={() => setShowPasswordPrompt(false)}
-      onConfirm={() => {
-        setShowPasswordPrompt(false);
-        performInvite();
-      }}
-      actionTitle="Invite Admin Account"
-      actionDescription={`Are you sure you want to invite ${formData.email} as an Admin? They will have full access to system settings and all staff accounts once they accept the invitation.`}
-      confirmButtonText="Invite Admin"
-      isDestructive={false}
-    />
-    </>
   );
 }
