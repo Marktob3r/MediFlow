@@ -349,25 +349,6 @@ export default function AdminDashboard() {
     });
   };
 
-  const handlePromoteStaff = (staff: StaffUser) => {
-    setConfirmAction({
-      isOpen: true,
-      title: "Promote to Admin",
-      description: `Are you sure you want to promote ${staff.firstName} ${staff.lastName} to Admin? They will have full access to system settings and all staff accounts.`,
-      isDestructive: false,
-      buttonText: "Promote to Admin",
-      action: async () => {
-        try {
-          await updateStaffMember(staff.id, { role: "admin" });
-          showToast("Promoted", `Staff account ${staff.firstName} ${staff.lastName} has been promoted to Admin.`, "success");
-          fetchStaffAccounts();
-        } catch (error: any) {
-          showToast("Error", error.message || "Failed to promote staff member.", "error");
-        }
-      }
-    });
-  };
-
   const fetchSystemLogs = async () => {
     // Placeholder logs - replace with actual system logs table later
     setSystemLogs([]);
@@ -568,15 +549,6 @@ export default function AdminDashboard() {
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-
-                    {staff.role === "staff" && (
-                      <button 
-                        onClick={() => handlePromoteStaff(staff)}
-                        className="px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors text-xs font-bold flex items-center gap-1.5"
-                      >
-                        <Shield className="w-3.5 h-3.5" /> Promote
-                      </button>
-                    )}
 
                     {staff.status === "pending" && (
                       <button 

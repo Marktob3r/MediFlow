@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Shield, User, Save } from "lucide-react";
 import { updateStaffMember, StaffUser } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
+import PasswordConfirmModal from "./PasswordConfirmModal";
 
 type EditStaffModalProps = {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
 
   // Keep a local copy of staff to allow exit animations to play out when staff becomes null
   const [cachedStaff, setCachedStaff] = useState<StaffUser | null>(null);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
 
   useEffect(() => {
     if (staff) {
@@ -55,10 +57,8 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     }
   }, [staff]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performSave = async () => {
     if (!cachedStaff) return;
-    
     setLoading(true);
     try {
       await updateStaffMember(cachedStaff.id, {
@@ -67,7 +67,12 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
         specialization: formData.specialization,
         isActive: formData.isActive,
       });
-      showToast("Updated ✓", "Staff member updated successfully.", "success");
+      // Global toast for promotion check
+      if (formData.role === "admin" && cachedStaff.role !== "admin") {
+        showToast("Promoted", `Staff account ${cachedStaff.firstName} ${cachedStaff.lastName} has been promoted to Admin.`, "success");
+      } else {
+        showToast("Updated ✓", "Staff member updated successfully.", "success");
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -77,9 +82,23 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cachedStaff) return;
+    
+    // Check if promoting to admin
+    if (formData.role === "admin" && cachedStaff.role !== "admin") {
+      setShowPasswordPrompt(true);
+      return;
+    }
+
+    await performSave();
+  };
+
   if (!cachedStaff) return null;
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <>
@@ -288,5 +307,22 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
         </>
       )}
     </AnimatePresence>
+
+    {/* The password confirmation modal needs to be rendered parallel so its z-index overlay stacks correctly above this modal */}
+    {cachedStaff && (
+      <PasswordConfirmModal
+        isOpen={showPasswordPrompt}
+        onClose={() => setShowPasswordPrompt(false)}
+        onConfirm={() => {
+          setShowPasswordPrompt(false);
+          performSave();
+        }}
+        actionTitle="Promote to Admin"
+        actionDescription={`Are you sure you want to promote ${cachedStaff.firstName} ${cachedStaff.lastName} to Admin? They will have full access to system settings and all staff accounts.`}
+        confirmButtonText="Promote to Admin"
+        isDestructive={false}
+      />
+    )}
+    </>
   );
 }
