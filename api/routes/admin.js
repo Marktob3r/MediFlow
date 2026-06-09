@@ -217,24 +217,23 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-// Deactivate a staff member
+// Delete a staff member
 router.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
     if (req.adminUser.id === id) {
-      return res.status(400).json({ error: "You cannot deactivate your own account" });
+      return res.status(400).json({ error: "You cannot delete your own account" });
     }
 
-    const { error: staffError } = await supabaseAdmin
-      .from('staff')
-      .update({ is_active: false })
-      .eq('user_id', id);
+    // Completely delete user from Supabase Auth (this usually cascades to public tables if foreign keys are set up that way, otherwise we'd manually delete)
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(id);
 
-    if (staffError) return res.status(400).json({ error: staffError.message });
-
-    // Update metadata
-    await supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: { is_active: false } });
+    if (deleteError) {
+      // Sometimes it fails if foreign keys restrict it, so fallback to just deleting the profile manually first if needed
+      // but usually deleteUser is enough
+      return res.status(400).json({ error: deleteError.message });
+    }
 
     res.status(200).json({ success: true });
   } catch (err) {

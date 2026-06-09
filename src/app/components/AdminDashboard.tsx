@@ -39,9 +39,10 @@ import {
 } from "recharts";
 import { supabase } from "../../config/supabase";
 import { useAuth } from "../../contexts/AuthContext";
-import { getStaffList, StaffUser, resendInvite } from "../../services/adminApi";
+import { updateStaffMember, deactivateStaffMember, getStaffList, StaffUser, resendInvite } from "../../services/adminApi";
 import InviteStaffModal from "./InviteStaffModal";
 import EditStaffModal from "./EditStaffModal";
+import PasswordConfirmModal from "./PasswordConfirmModal";
 import { useToast } from "../../contexts/ToastContext";
 
 type AdminTab = "analytics" | "accounts" | "queue-controls" | "settings";
@@ -57,6 +58,21 @@ export default function AdminDashboard() {
   const [queueStarted, setQueueStarted] = useState(true);
   const [dailyCap, setDailyCap] = useState(80);
   const [loading, setLoading] = useState(true);
+
+  // Password confirmation modal state
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    isDestructive?: boolean;
+    buttonText?: string;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    action: () => {},
+  });
 
   // State for dynamic data
   const [kpiData, setKpiData] = useState<any[]>([]);
@@ -314,6 +330,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteStaff = (staff: StaffUser) => {
+    setConfirmAction({
+      isOpen: true,
+      title: "Delete Staff Account",
+      description: `Are you sure you want to permanently delete the account for ${staff.firstName} ${staff.lastName}? This action cannot be undone.`,
+      isDestructive: true,
+      buttonText: "Delete Account",
+      action: async () => {
+        try {
+          await deactivateStaffMember(staff.id);
+          showToast("Deleted", `Staff account ${staff.firstName} ${staff.lastName} has been deleted.`, "success");
+          fetchStaffAccounts();
+        } catch (error: any) {
+          showToast("Error", error.message || "Failed to delete staff member.", "error");
+        }
+      }
+    });
+  };
+
+  const handlePromoteStaff = (staff: StaffUser) => {
+    setConfirmAction({
+      isOpen: true,
+      title: "Promote to Admin",
+      description: `Are you sure you want to promote ${staff.firstName} ${staff.lastName} to Admin? They will have full access to system settings and all staff accounts.`,
+      isDestructive: false,
+      buttonText: "Promote to Admin",
+      action: async () => {
+        try {
+          await updateStaffMember(staff.id, { role: "admin" });
+          showToast("Promoted", `Staff account ${staff.firstName} ${staff.lastName} has been promoted to Admin.`, "success");
+          fetchStaffAccounts();
+        } catch (error: any) {
+          showToast("Error", error.message || "Failed to promote staff member.", "error");
+        }
+      }
+    });
+  };
+
   const fetchSystemLogs = async () => {
     // Placeholder logs - replace with actual system logs table later
     setSystemLogs([]);
@@ -473,17 +527,17 @@ export default function AdminDashboard() {
             ) : (
               staffAccounts.map((staff) => (
                 <div key={staff.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow flex flex-col relative group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex gap-3 items-center">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm ${staff.role === "admin" ? "bg-purple-500" : "bg-blue-500"}`}>
+                  <div className="flex justify-between items-start mb-4 gap-2">
+                    <div className="flex gap-3 items-center min-w-0">
+                      <div className={`w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm ${staff.role === "admin" ? "bg-purple-500" : "bg-blue-500"}`}>
                         {staff.firstName.charAt(0)}
                       </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 leading-tight">{staff.firstName} {staff.lastName}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">{staff.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-gray-900 leading-tight truncate">{staff.firstName} {staff.lastName}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate" title={staff.email}>{staff.email}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${staff.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                         {staff.role === "admin" ? "Admin" : "Staff"}
                       </span>
@@ -507,6 +561,23 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-gray-50">
+                    <button 
+                      onClick={() => handleDeleteStaff(staff)}
+                      className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors text-xs font-bold"
+                      title="Delete Account"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {staff.role === "staff" && (
+                      <button 
+                        onClick={() => handlePromoteStaff(staff)}
+                        className="px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors text-xs font-bold flex items-center gap-1.5"
+                      >
+                        <Shield className="w-3.5 h-3.5" /> Promote
+                      </button>
+                    )}
+
                     {staff.status === "pending" && (
                       <button 
                         onClick={() => handleResendInvite(staff.email)}
@@ -773,6 +844,15 @@ export default function AdminDashboard() {
         onClose={() => setEditModalStaff(null)} 
         onSuccess={fetchStaffAccounts} 
         staff={editModalStaff} 
+      />
+      <PasswordConfirmModal
+        isOpen={confirmAction.isOpen}
+        onClose={() => setConfirmAction(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmAction.action}
+        actionTitle={confirmAction.title}
+        actionDescription={confirmAction.description}
+        confirmButtonText={confirmAction.buttonText}
+        isDestructive={confirmAction.isDestructive}
       />
     </div>
   );

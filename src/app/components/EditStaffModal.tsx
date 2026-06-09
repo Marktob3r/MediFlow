@@ -40,8 +40,12 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     isActive: true,
   });
 
+  // Keep a local copy of staff to allow exit animations to play out when staff becomes null
+  const [cachedStaff, setCachedStaff] = useState<StaffUser | null>(null);
+
   useEffect(() => {
     if (staff) {
+      setCachedStaff(staff);
       setFormData({
         role: staff.role,
         department: staff.department,
@@ -53,11 +57,11 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staff) return;
+    if (!cachedStaff) return;
     
     setLoading(true);
     try {
-      await updateStaffMember(staff.id, {
+      await updateStaffMember(cachedStaff.id, {
         role: formData.role,
         department: formData.department,
         specialization: formData.specialization,
@@ -73,7 +77,7 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
     }
   };
 
-  if (!staff) return null;
+  if (!cachedStaff) return null;
 
   return (
     <AnimatePresence>
@@ -122,12 +126,12 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 {/* Read-only User Info */}
                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg ${staff.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
-                    {staff.firstName.charAt(0)}
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg ${cachedStaff.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
+                    {cachedStaff.firstName.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 leading-tight">{staff.firstName} {staff.lastName}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{staff.email}</p>
+                    <h3 className="font-bold text-gray-900 leading-tight">{cachedStaff.firstName} {cachedStaff.lastName}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{cachedStaff.email}</p>
                   </div>
                 </div>
 
