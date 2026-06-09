@@ -341,6 +341,7 @@ export default function AdminDashboard() {
         try {
           await deactivateStaffMember(staff.id);
           showToast("Deleted", `Staff account ${staff.firstName} ${staff.lastName} has been deleted.`, "success");
+          setConfirmAction(prev => ({ ...prev, isOpen: false }));
           fetchStaffAccounts();
         } catch (error: any) {
           showToast("Error", error.message || "Failed to delete staff member.", "error");
@@ -498,12 +499,6 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500 max-w-sm mx-auto">
                   Get started by adding staff accounts to manage the clinic operations.
                 </p>
-                <button
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="mt-6 bg-green-500 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-sm text-sm hover:bg-green-600 transition-colors flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" /> Add Staff Account
-                </button>
               </div>
             ) : (
               staffAccounts.map((staff) => (
