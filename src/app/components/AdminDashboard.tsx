@@ -97,16 +97,13 @@ export default function AdminDashboard() {
     address: "2/F RM Centrepoint Bldg. Magsaysay Drive cor. Rizal Ave. East Tapinac, Olongapo, Philippines, 2200",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsRowId, setSettingsRowId] = useState<string | null>(null);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordSaved, setPasswordSaved] = useState(false);
 
   // Sync active tab with URL path
   useEffect(() => {
@@ -158,7 +155,6 @@ export default function AdminDashboard() {
   };
 
   const handleChangePassword = async () => {
-    setPasswordError("");
     if (!currentPassword || !newPassword || !confirmPassword) {
       showToast("Validation Error", "Please fill in all password fields.", "error");
       return;

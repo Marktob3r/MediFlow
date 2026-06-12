@@ -251,7 +251,7 @@ export default function JoinQueue() {
                   if (selectedService) {
                     setStep(2);
                   } else {
-                    setError("Please select a service");
+                    showToast("Service Required", "Please select a service to continue.", "error");
                   }
                 }}
                 disabled={!selectedService}

@@ -3,16 +3,17 @@ import { useNavigate, Link } from "react-router";
 import { motion } from "motion/react";
 import { Activity, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const CLINIC_NAME = "Samuel P. Dizon Medical Clinic";
 
 export default function StaffLogin() {
   const navigate = useNavigate();
   const { signIn, user, userRole, isAuthenticated } = useAuth();
+  const { showToast } = useToast();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   // Redirect if already logged in as staff/admin
   useEffect(() => {
@@ -22,14 +23,13 @@ export default function StaffLogin() {
       } else if (userRole === "staff") {
         navigate("/staff/dashboard");
       } else if (userRole === "patient") {
-        setError("This account is registered as a patient. Please use the Patient Portal.");
+        showToast("Wrong Portal", "This account is registered as a patient. Please use the Patient Portal.", "error");
       }
     }
   }, [isAuthenticated, userRole, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -41,7 +41,7 @@ export default function StaffLogin() {
       // Navigation and role checking is now handled by the useEffect above
 
     } catch (err: any) {
-      setError(err.message || "Authentication failed. Please check your credentials.");
+      showToast("Sign In Failed", err.message || "Authentication failed. Please check your credentials.", "error");
       console.error("Staff login error:", err);
       setLoading(false);
     }
@@ -148,20 +148,6 @@ export default function StaffLogin() {
                 </button>
               </div>
             </div>
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className={`flex items-start gap-2 px-4 py-3 rounded-2xl text-sm ${error.includes("patient")
-                  ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
-                  : "bg-red-500/10 border border-red-500/20 text-red-400"
-                  }`}
-              >
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </motion.div>
-            )}
 
             <motion.button
               whileTap={{ scale: 0.97 }}

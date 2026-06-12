@@ -23,7 +23,6 @@ export default function PatientOnboarding() {
     emergency_phone: "",
   });
   const [savingOnboarding, setSavingOnboarding] = useState(false);
-  const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   // Lock body scroll and clear any lingering toasts (e.g. "Welcome Back") on mount
   useEffect(() => {
@@ -93,7 +92,6 @@ export default function PatientOnboarding() {
   const handleSaveOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingOnboarding(true);
-    setOnboardingError(null);
     try {
       if (!onboardingForm.date_of_birth || !onboardingForm.gender || !onboardingForm.blood_type || !onboardingForm.address || !onboardingForm.phone || !onboardingForm.emergency_contact || !onboardingForm.emergency_phone) {
         throw new Error("Please fill in all required fields to continue.");
@@ -127,7 +125,6 @@ export default function PatientOnboarding() {
       navigate("/patient/dashboard", { replace: true });
     } catch (err: any) {
       showToast("Error", err.message || "Failed to complete onboarding", "error");
-      setOnboardingError(err.message);
     } finally {
       setSavingOnboarding(false);
     }
@@ -386,16 +383,7 @@ export default function PatientOnboarding() {
                         className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
                       />
                     </div>
-                    {onboardingForm.emergency_phone.length > 0 && onboardingForm.emergency_phone.length < 11 && (
-                      <p className="text-xs text-amber-500 mt-1.5 ml-1">{11 - onboardingForm.emergency_phone.length} more digits needed</p>
-                    )}
                   </div>
-                  {onboardingError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-red-700">{onboardingError}</p>
-                    </div>
-                  )}
                 </motion.div>
               )}
 

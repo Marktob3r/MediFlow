@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { Activity, Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle, AlertCircle, Phone, X, ScrollText, Shield } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 type Tab = "login" | "register";
 
@@ -11,11 +12,10 @@ const CLINIC_NAME = "Samuel P. Dizon Medical Clinic";
 export default function PatientLogin() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated, userRole } = useAuth();
+  const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>("login");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modalContent, setModalContent] = useState<"terms" | "privacy" | null>(null);
 
   // Redirect if already logged in as a patient
@@ -24,7 +24,7 @@ export default function PatientLogin() {
       if (userRole === "patient") {
         navigate("/patient/dashboard");
       } else {
-        setError("This account is registered as staff/admin. Please use the Staff Portal.");
+        showToast("Wrong Portal", "This account is registered as staff/admin. Please use the Staff Portal.", "error");
         setLoading(false);
       }
     }
@@ -54,7 +54,7 @@ export default function PatientLogin() {
       await signIn(loginForm.email, loginForm.password);
       // Navigation is now handled by the useEffect above
     } catch (err: any) {
-      setError(err.message || "Sign in failed. Please check your credentials.");
+      showToast("Sign In Failed", err.message || "Invalid credentials. Please check your email and password.", "error");
       console.error("Login error:", err);
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export default function PatientLogin() {
       }
 
     } catch (err: any) {
-      setError(err.message || "Registration failed. Please try again.");
+      showToast("Registration Failed", err.message || "Registration failed. Please try again.", "error");
       console.error("Registration error:", err);
       setLoading(false);
     }
@@ -158,27 +158,12 @@ export default function PatientLogin() {
 
         {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-green-100 overflow-hidden">
-          {/* Error Alert */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 border-b border-red-200 p-4 flex items-start gap-3"
-            >
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
-            </motion.div>
-          )}
-
           {/* Tab switcher */}
           <div className="flex border-b border-gray-100">
             {(["login", "register"] as Tab[]).map((t) => (
               <button
                 key={t}
-                onClick={() => {
-                  setTab(t);
-                  setError(null);
-                }}
+                onClick={() => setTab(t)}
                 className={`flex-1 py-4 text-sm font-semibold transition-all ${tab === t
                   ? "text-green-700 border-b-2 border-green-500 bg-green-50/50"
                   : "text-gray-400 hover:text-gray-600"
@@ -425,30 +410,6 @@ export default function PatientLogin() {
                 </motion.form>
               )}
 
-              {/* ── SUCCESS STATE ── */}
-              {tab === "register" && success && (
-                <motion.div
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-8"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                  >
-                    <CheckCircle className="w-10 h-10 text-green-500" />
-                  </motion.div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Account Created!</h3>
-                  <p className="text-gray-500 text-sm">
-                    Your patient account has been successfully created.
-                    <br />
-                    Redirecting to dashboard...
-                  </p>
-                </motion.div>
-              )}
             </AnimatePresence>
           </div>
         </div>

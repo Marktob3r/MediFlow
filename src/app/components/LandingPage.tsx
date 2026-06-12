@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../../config/supabase";
+import { useToast } from "../../contexts/ToastContext";
 import {
   Clock,
   Users,
@@ -58,9 +59,9 @@ const features = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [clinicInfo, setClinicInfo] = useState({
     name: DEFAULT_CLINIC_NAME,
     address: DEFAULT_CLINIC_ADDRESS,
@@ -98,17 +99,19 @@ export default function LandingPage() {
     const errorDescription = params.get("error_description");
 
     if (error) {
-      // Clear the hash from the URL so it looks clean
       window.history.replaceState(null, "", window.location.pathname);
 
       if (errorCode === "otp_expired") {
-        setAuthError(
-          "Your verification link has expired. Please register again and use the 6-digit code sent to your email."
+        showToast(
+          "Verification Link Expired",
+          "Your verification link has expired. Please register again and use the 6-digit code sent to your email.",
+          "error"
         );
       } else {
-        setAuthError(
-          errorDescription?.replace(/\+/g, " ") ||
-          "An authentication error occurred. Please try again."
+        showToast(
+          "Verification Failed",
+          errorDescription?.replace(/\+/g, " ") || "An authentication error occurred. Please try again.",
+          "error"
         );
       }
       return;
@@ -130,40 +133,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white font-['Montserrat']">
-      {/* Auth error toast (e.g. expired verification link) */}
-      <AnimatePresence>
-        {authError && (
-          <motion.div
-            initial={{ opacity: 0, y: -60 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -60 }}
-            transition={{ duration: 0.4 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-md w-full mx-4"
-          >
-            <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 shadow-xl flex items-start gap-3">
-              <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-red-600 text-sm font-bold">!</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-800 mb-0.5">Verification Failed</p>
-                <p className="text-xs text-red-600 leading-relaxed">{authError}</p>
-                <button
-                  onClick={() => navigate("/patient/login")}
-                  className="mt-2 text-xs font-bold text-red-700 hover:text-red-800 underline"
-                >
-                  Go back to Register →
-                </button>
-              </div>
-              <button
-                onClick={() => setAuthError(null)}
-                className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
-              >
-                ✕
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {/* ── NAV ── */}
       <motion.nav
         initial={{ y: -80, opacity: 0 }}
