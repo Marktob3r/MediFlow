@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Mail, ArrowLeft, CheckCircle2, Lock, Search, Activity } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2, Lock, Eye, EyeOff, Search, Activity } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
 import { useToast } from "../../contexts/ToastContext";
@@ -367,6 +367,13 @@ export default function StaffForgotPassword() {
                         placeholder="••••••"
                         className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(!showPass)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                      >
+                        {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -384,17 +391,14 @@ export default function StaffForgotPassword() {
                         placeholder="••••••"
                         className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(!showPass)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                      >
+                        {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowPass(!showPass)}
-                      className="text-xs text-green-400 hover:text-green-300 font-medium"
-                    >
-                      {showPass ? "Hide" : "Show"} passwords
-                    </button>
                   </div>
 
                   <motion.button
