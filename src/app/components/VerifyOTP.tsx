@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { Activity, Mail, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
@@ -11,8 +12,7 @@ export default function VerifyOTP() {
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [cooldown, setCooldown] = useState(60);
 
   useEffect(() => {
@@ -40,7 +40,6 @@ export default function VerifyOTP() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
@@ -52,7 +51,7 @@ export default function VerifyOTP() {
 
       // On success, AuthContext handles the session and navigation is handled by the useEffect above
     } catch (err: any) {
-      setError(err.message || "Invalid verification code. Please try again.");
+      showToast("Verification Failed", err.message || "Invalid verification code. Please try again.", "error");
       console.error("Verification error:", err);
       setLoading(false);
     }
@@ -60,15 +59,13 @@ export default function VerifyOTP() {
 
   const handleResend = async () => {
     if (cooldown > 0) return;
-    setError(null);
-    setMessage(null);
     setResending(true);
     try {
       await resendOtp(email);
-      setMessage("A new verification code has been sent to your email.");
-      setCooldown(60); // Reset cooldown for 60 seconds
+      showToast("Code Sent", "A new verification code has been sent to your email.", "success");
+      setCooldown(60);
     } catch (err: any) {
-      setError(err.message || "Failed to resend code. Please try again.");
+      showToast("Resend Failed", err.message || "Failed to resend code. Please try again.", "error");
     } finally {
       setResending(false);
     }
@@ -105,32 +102,6 @@ export default function VerifyOTP() {
 
         {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-green-100 p-6 sm:p-8">
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 mb-6"
-              >
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{error}</p>
-              </motion.div>
-            )}
-            
-            {message && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-start gap-3 mb-6"
-              >
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-green-700">{message}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <form onSubmit={handleVerify} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 text-center">
