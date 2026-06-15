@@ -118,8 +118,6 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
                   </div>
                 </div>
 
-                </div>
-
                 {/* Department + Specialization */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>

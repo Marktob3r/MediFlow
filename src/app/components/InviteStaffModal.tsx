@@ -143,8 +143,6 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                   </div>
                 </div>
 
-                </div>
-
                 {/* Department + Specialization */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
