@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Save } from "lucide-react";
+import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Save, User, Mail } from "lucide-react";
 import { updateStaffMember, StaffUser } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -17,6 +17,8 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     role: "staff",
     department: "Front Desk",
     specialization: "",
@@ -25,14 +27,15 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
 
   // Keep a local copy of staff to allow exit animations to play out when staff becomes null
   const [cachedStaff, setCachedStaff] = useState<StaffUser | null>(null);
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
 
   useEffect(() => {
     if (staff) {
       setCachedStaff(staff);
       setFormData({
+        firstName: staff.firstName || "",
+        lastName: staff.lastName || "",
         role: staff.role,
-        department: staff.department,
+        department: staff.department || "Front Desk",
         specialization: staff.specialization || "",
         isActive: staff.isActive,
       });
@@ -42,9 +45,18 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cachedStaff) return;
+    
+    // Validate first and last name
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      showToast("Error", "First name and last name are required.", "error");
+      return;
+    }
+    
     setLoading(true);
     try {
       await updateStaffMember(cachedStaff.id, {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         role: formData.role,
         department: formData.department,
         specialization: formData.specialization,
@@ -110,11 +122,41 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
                 {/* Read-only User Info */}
                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg ${cachedStaff.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
-                    {cachedStaff.firstName.charAt(0)}
+                    {cachedStaff.firstName.charAt(0) || "U"}
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 leading-tight">{cachedStaff.firstName} {cachedStaff.lastName}</h3>
                     <p className="text-xs text-gray-500 mt-0.5">{cachedStaff.email}</p>
+                  </div>
+                </div>
+
+                {/* First & Last Name */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                      <User className="w-3 h-3 inline mr-1" />First Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.firstName}
+                      onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                      placeholder="First name"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                      <User className="w-3 h-3 inline mr-1" />Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.lastName}
+                      onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                      placeholder="Last name"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                    />
                   </div>
                 </div>
 
