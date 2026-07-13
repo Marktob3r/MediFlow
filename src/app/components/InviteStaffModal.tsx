@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   UserPlus, Mail, X, Building2, Stethoscope,
-  ChevronDown, Send, AlertCircle
+  ChevronDown, Send, AlertCircle, Shield, User, CheckCircle
 } from "lucide-react";
 import { inviteStaffMember } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
@@ -22,7 +22,7 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
     email: "",
     firstName: "",
     lastName: "",
-    role: "staff",
+    role: "staff" as "staff" | "admin",
     department: "Front Desk",
     specialization: "",
   });
@@ -34,24 +34,43 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+      showToast("Error", "Please fill in all required fields.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      await inviteStaffMember(formData);
-      showToast("Invitation Sent ✓", `Invite sent to ${formData.email}`, "success");
-      onSuccess();
-      handleClose();
-    } catch (err: any) {
-      showToast("Error", err.message || "Failed to send invitation.", "error");
+      const result = await inviteStaffMember({
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        role: formData.role,
+        department: formData.department,
+        specialization: formData.specialization,
+      });
+
+      if (result.success) {
+        showToast("Success", result.message, "success");
+        onSuccess();
+        handleClose();
+      } else {
+        showToast("Error", result.error || "Failed to send invitation.", "error");
+      }
+    } catch (error: any) {
+      showToast("Error", error.message || "Failed to send invitation.", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -60,7 +79,6 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
             onClick={handleClose}
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -72,16 +90,15 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
               className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="relative px-6 py-5 border-b border-gray-100">
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
-                      <UserPlus className="w-5 h-5 text-green-600" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center">
+                      <UserPlus className="w-5 h-5 text-white" />
                     </div>
                     <div>
                       <h2 className="font-bold text-gray-900 text-base leading-tight">Invite Staff Member</h2>
-                      <p className="text-gray-500 text-xs mt-0.5">Send a secure email invitation</p>
+                      <p className="text-gray-500 text-xs mt-0.5">Send invitation to user's personal email</p>
                     </div>
                   </div>
                   <button
@@ -94,8 +111,6 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
-
-                {/* Name row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
@@ -125,10 +140,9 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                   </div>
                 </div>
 
-                {/* Email */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                    Email Address <span className="text-red-400">*</span>
+                    Personal Email <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -137,13 +151,60 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                       required
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="staff@spdizon-clinic.ph"
+                      placeholder="user@gmail.com"
                       className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all"
                     />
                   </div>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    Send invitation to the user's personal email address.
+                  </p>
                 </div>
 
-                {/* Department + Specialization */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    <Shield className="w-3 h-3 inline mr-1" />Role <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: "staff" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 transition-all ${
+                        formData.role === "staff"
+                          ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        formData.role === "staff" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                      }`}>
+                        <User className="w-4 h-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Staff</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: "admin" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 transition-all ${
+                        formData.role === "admin"
+                          ? "border-purple-500 bg-purple-50 text-purple-700 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        formData.role === "admin" ? "bg-purple-500 text-white" : "bg-gray-200 text-gray-500"
+                      }`}>
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Admin</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    {formData.role === "admin" 
+                      ? "Admins have full access to all settings and can manage other users." 
+                      : "Staff have limited access to daily operations."}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
@@ -174,7 +235,6 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                   </div>
                 </div>
 
-                {/* Admin warning */}
                 <AnimatePresence>
                   {formData.role === "admin" && (
                     <motion.div
@@ -186,14 +246,24 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
                       <div className="flex gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
                         <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-700 leading-relaxed">
-                          <strong>Admin accounts</strong> have full access to all system settings, user management, and sensitive data. Only invite trusted personnel.
+                          <strong>Admin accounts</strong> have full access to all system settings, user management, and sensitive data. Only assign to trusted personnel.
                         </p>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Footer actions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700">
+                    {formData.email ? (
+                      `An invitation will be sent to ${formData.email}. The user will receive an OTP code via email to verify their account.`
+                    ) : (
+                      "Enter the user's personal email. They will receive an OTP code to verify their account."
+                    )}
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-3 pt-1">
                   <button
                     type="button"
