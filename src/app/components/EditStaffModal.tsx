@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Edit2, X, AlertTriangle, Building2, Stethoscope, ChevronDown, Save, User, Mail } from "lucide-react";
-import { updateStaffMember, StaffUser } from "../../services/adminApi";
+import {
+  User, Mail, X, Building2, Stethoscope,
+  ChevronDown, Save, Shield, UserCheck, AlertCircle
+} from "lucide-react";
+import { updateStaffMember } from "../../services/adminApi";
 import { useToast } from "../../contexts/ToastContext";
+import { StaffUser } from "../../services/adminApi";
 
 type EditStaffModalProps = {
   isOpen: boolean;
@@ -19,60 +23,84 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    role: "staff",
+    role: "staff" as "staff" | "admin",
     department: "Front Desk",
     specialization: "",
     isActive: true,
   });
 
-  // Keep a local copy of staff to allow exit animations to play out when staff becomes null
-  const [cachedStaff, setCachedStaff] = useState<StaffUser | null>(null);
-
   useEffect(() => {
     if (staff) {
-      setCachedStaff(staff);
       setFormData({
         firstName: staff.firstName || "",
         lastName: staff.lastName || "",
-        role: staff.role,
+        role: staff.role || "staff",
         department: staff.department || "Front Desk",
         specialization: staff.specialization || "",
-        isActive: staff.isActive,
+        isActive: staff.isActive !== false,
       });
     }
   }, [staff]);
 
+  const reset = () => {
+    if (staff) {
+      setFormData({
+        firstName: staff.firstName || "",
+        lastName: staff.lastName || "",
+        role: staff.role || "staff",
+        department: staff.department || "Front Desk",
+        specialization: staff.specialization || "",
+        isActive: staff.isActive !== false,
+      });
+    }
+  };
+
+  const handleClose = () => { onClose(); reset(); };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cachedStaff) return;
     
-    // Validate first and last name
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      showToast("Error", "First name and last name are required.", "error");
+    // ✅ Explicitly type and trim values
+    const firstName: string = formData.firstName.trim();
+    const lastName: string = formData.lastName.trim();
+    const role: string = formData.role;
+    const department: string = formData.department || "Front Desk";
+    const specialization: string = formData.specialization || "";
+    const isActive: boolean = formData.isActive;
+    
+    if (!firstName || !lastName) {
+      showToast("Error", "Please fill in all required fields.", "error");
       return;
     }
-    
+
+    if (!staff?.id) {
+      showToast("Error", "No staff member selected.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      await updateStaffMember(cachedStaff.id, {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        role: formData.role,
-        department: formData.department,
-        specialization: formData.specialization,
-        isActive: formData.isActive,
+      // ✅ All values are explicitly typed as string
+      await updateStaffMember(staff.id, {
+        firstName: firstName,
+        lastName: lastName,
+        role: role,
+        department: department,
+        specialization: specialization,
+        isActive: isActive,
       });
-      showToast("Updated ✓", "Staff member updated successfully.", "success");
+
+      showToast("Success", "Staff member updated successfully.", "success");
       onSuccess();
-      onClose();
-    } catch (err: any) {
-      showToast("Error", err.message || "Failed to update staff member.", "error");
+      handleClose();
+    } catch (error: any) {
+      showToast("Error", error.message || "Failed to update staff member.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!cachedStaff) return null;
+  if (!isOpen || !staff) return null;
 
   return (
     <AnimatePresence>
@@ -83,7 +111,7 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-50"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           <motion.div
@@ -97,20 +125,19 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
               className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="relative px-6 py-5 border-b border-gray-100">
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                      <Edit2 className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
                     </div>
                     <div>
                       <h2 className="font-bold text-gray-900 text-base leading-tight">Edit Staff Member</h2>
-                      <p className="text-gray-500 text-xs mt-0.5">Manage permissions and status</p>
+                      <p className="text-gray-500 text-xs mt-0.5">Update staff information</p>
                     </div>
                   </div>
                   <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <X className="w-4 h-4" />
@@ -119,48 +146,96 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                {/* Read-only User Info */}
-                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg ${cachedStaff.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
-                    {cachedStaff.firstName.charAt(0) || "U"}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 leading-tight">{cachedStaff.firstName} {cachedStaff.lastName}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{cachedStaff.email}</p>
-                  </div>
-                </div>
-
-                {/* First & Last Name */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                      <User className="w-3 h-3 inline mr-1" />First Name *
+                      First Name <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.firstName}
                       onChange={e => setFormData({ ...formData, firstName: e.target.value })}
-                      placeholder="First name"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                      placeholder="e.g. Maria"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                      <User className="w-3 h-3 inline mr-1" />Last Name *
+                      Last Name <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.lastName}
                       onChange={e => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Last name"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                      placeholder="e.g. Santos"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
 
-                {/* Department + Specialization */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    <Mail className="w-3 h-3 inline mr-1" />Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email"
+                      value={staff?.email || ""}
+                      disabled
+                      className="w-full pl-11 pr-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">Email cannot be changed</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    <Shield className="w-3 h-3 inline mr-1" />Role <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: "staff" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 transition-all ${
+                        formData.role === "staff"
+                          ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        formData.role === "staff" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
+                      }`}>
+                        <User className="w-4 h-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Staff</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: "admin" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 transition-all ${
+                        formData.role === "admin"
+                          ? "border-purple-500 bg-purple-50 text-purple-700 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        formData.role === "admin" ? "bg-purple-500 text-white" : "bg-gray-200 text-gray-500"
+                      }`}>
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Admin</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    {formData.role === "admin" 
+                      ? "Admins have full access to all settings and can manage other users." 
+                      : "Staff have limited access to daily operations."}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
@@ -191,59 +266,60 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
                   </div>
                 </div>
 
-                {/* Status Toggle */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Account Status</label>
-                  <div 
-                    onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-                    className={`flex items-center justify-between p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                      formData.isActive ? "bg-green-50 border-green-500" : "bg-gray-50 border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${formData.isActive ? "bg-green-100" : "bg-gray-200"}`}>
-                         <div className={`w-3 h-3 rounded-full ${formData.isActive ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-gray-400"}`} />
-                      </div>
-                      <div>
-                        <span className={`block font-bold text-sm leading-tight ${formData.isActive ? "text-green-700" : "text-gray-600"}`}>
-                          {formData.isActive ? "Active Account" : "Deactivated"}
-                        </span>
-                        <span className="text-xs text-gray-400 mt-0.5 block">
-                          {formData.isActive ? "User can sign in normally" : "Login access disabled"}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Toggle switch UI */}
-                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${formData.isActive ? "bg-green-500" : "bg-gray-300"}`}>
-                      <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${formData.isActive ? "translate-x-6" : "translate-x-0"}`} />
-                    </div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    <UserCheck className="w-3 h-3 inline mr-1" />Status
+                  </label>
+                  <div className="flex items-center gap-4 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isActive: true })}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all ${
+                        formData.isActive
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                      Active
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isActive: false })}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all ${
+                        !formData.isActive
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
+                      Inactive
+                    </button>
                   </div>
-                  
-                  <AnimatePresence>
-                    {!formData.isActive && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                        animate={{ opacity: 1, height: "auto", marginTop: 8 }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                          <p className="text-xs text-amber-700 leading-relaxed">
-                            <strong>Note:</strong> This user will be immediately logged out and prevented from signing in until reactivated.
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
-                {/* Footer actions */}
-                <div className="flex items-center gap-3 pt-2">
+                <AnimatePresence>
+                  {formData.role === "admin" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
+                        <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-700 leading-relaxed">
+                          <strong>Admin accounts</strong> have full access to all system settings, user management, and sensitive data. Only assign to trusted personnel.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex items-center gap-3 pt-1">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="flex-1 py-3 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors"
                   >
                     Cancel
@@ -251,7 +327,7 @@ export default function EditStaffModal({ isOpen, onClose, onSuccess, staff }: Ed
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 py-3 bg-gray-900 text-white font-bold text-sm rounded-2xl shadow-md hover:bg-gray-800 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98]"
+                    className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-sm rounded-2xl shadow-md hover:shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98]"
                   >
                     {loading ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Saving...</span></>
