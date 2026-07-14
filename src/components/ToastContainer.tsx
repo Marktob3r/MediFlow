@@ -1,68 +1,94 @@
+import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle, XCircle, Info, X } from "lucide-react";
-import { useToast, ToastType } from "../contexts/ToastContext";
+import { useToast } from "../contexts/ToastContext";
 
-const toastStyles: Record<ToastType, { bg: string; border: string; icon: any; iconColor: string }> = {
-  success: {
-    bg: "bg-white",
-    border: "border-green-100",
-    icon: CheckCircle,
-    iconColor: "text-green-600",
-  },
-  error: {
-    bg: "bg-white",
-    border: "border-red-100",
-    icon: XCircle,
-    iconColor: "text-red-500",
-  },
-  info: {
-    bg: "bg-white",
-    border: "border-blue-100",
-    icon: Info,
-    iconColor: "text-blue-500",
-  },
-};
-
-export default function ToastContainer() {
+const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useToast();
 
-  return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
-      <AnimatePresence>
-        {toasts.map((toast) => {
-          const style = toastStyles[toast.type];
-          const Icon = style.icon;
+  // Guard against undefined toasts
+  if (!toasts || toasts.length === 0) {
+    return null;
+  }
 
+  const getToastStyles = (type: string) => {
+    switch (type) {
+      case "success":
+        return {
+          icon: "✓",
+          iconBg: "bg-green-100",
+          iconColor: "text-green-600",
+          border: "border-green-300/50",
+          titleColor: "text-green-800",
+          messageColor: "text-green-600/80",
+          closeColor: "text-green-400 hover:text-green-600",
+          closeBg: "hover:bg-green-100/50",
+        };
+      case "warning":
+        return {
+          icon: "⚠",
+          iconBg: "bg-amber-100",
+          iconColor: "text-amber-600",
+          border: "border-amber-300/50",
+          titleColor: "text-amber-800",
+          messageColor: "text-amber-600/80",
+          closeColor: "text-amber-400 hover:text-amber-600",
+          closeBg: "hover:bg-amber-100/50",
+        };
+      case "error":
+        return {
+          icon: "✕",
+          iconBg: "bg-red-100",
+          iconColor: "text-red-600",
+          border: "border-red-300/50",
+          titleColor: "text-red-800",
+          messageColor: "text-red-600/80",
+          closeColor: "text-red-400 hover:text-red-600",
+          closeBg: "hover:bg-red-100/50",
+        };
+      case "info":
+      default:
+        return {
+          icon: "ℹ",
+          iconBg: "bg-blue-100",
+          iconColor: "text-blue-600",
+          border: "border-blue-300/50",
+          titleColor: "text-blue-800",
+          messageColor: "text-blue-600/80",
+          closeColor: "text-blue-400 hover:text-blue-600",
+          closeBg: "hover:bg-blue-100/50",
+        };
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 w-[380px] max-w-[calc(100vw-2rem)]">
+      <AnimatePresence>
+        {toasts.map((toast: any) => {
+          if (!toast) return null;
+          
+          const styles = getToastStyles(toast.type || "info");
+          
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              layout
-              className={`pointer-events-auto flex items-start gap-3 w-80 p-4 rounded-2xl shadow-xl border ${style.bg} ${style.border}`}
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white/95 backdrop-blur-md border rounded-2xl px-5 py-4 shadow-2xl flex items-center gap-4 w-full"
             >
-              {/* Icon */}
-              <div className={`mt-0.5 flex-shrink-0 ${style.iconColor}`}>
-                <Icon className="w-5 h-5" />
+              <div className={`w-9 h-9 ${styles.iconBg} rounded-xl flex items-center justify-center flex-shrink-0 text-xl font-bold ${styles.iconColor}`}>
+                {styles.icon}
               </div>
-
-              {/* Text */}
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-gray-900">{toast.title}</h4>
-                {toast.message && (
-                  <p className="text-xs text-gray-500 mt-0.5 break-words">
-                    {toast.message}
-                  </p>
-                )}
+                <p className={`text-sm font-semibold ${styles.titleColor}`}>{toast.title || "Notification"}</p>
+                <p className={`text-xs ${styles.messageColor} truncate`}>{toast.message || ""}</p>
               </div>
-
-              {/* Close Button */}
               <button
                 onClick={() => removeToast(toast.id)}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors -mr-1"
+                className={`w-7 h-7 rounded-xl ${styles.closeBg} ${styles.closeColor} transition-colors flex items-center justify-center flex-shrink-0 text-lg`}
               >
-                <X className="w-4 h-4" />
+                ×
               </button>
             </motion.div>
           );
@@ -70,4 +96,6 @@ export default function ToastContainer() {
       </AnimatePresence>
     </div>
   );
-}
+};
+
+export default ToastContainer;
