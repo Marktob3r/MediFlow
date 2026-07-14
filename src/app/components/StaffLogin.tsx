@@ -1,84 +1,419 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
-import { motion } from "motion/react";
-import { Activity, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
+import { useNavigate, useLocation } from "react-router";
+import { motion, AnimatePresence } from "motion/react";
+import { 
+  Activity, Eye, EyeOff, Mail, Lock, ArrowLeft, Shield, 
+  KeyRound, CheckCircle, AlertTriangle, UserPlus
+} from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { supabase, supabaseAdmin } from "../../config/supabase";
+
+type Tab = "login" | "verify-setup";
 
 const CLINIC_NAME = "Samuel P. Dizon Medical Clinic";
 
 export default function StaffLogin() {
   const navigate = useNavigate();
-  const { signIn, user, userRole, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const { signIn, user, userRole, isAuthenticated, verifyOtp, resendOtp, updatePassword } = useAuth();
   const { showToast } = useToast();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [tab, setTab] = useState<Tab>("login");
   const [showPass, setShowPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [settingPassword, setSettingPassword] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [hasShownDeactivatedToast, setHasShownDeactivatedToast] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
+  const [otpResendTimeLeft, setOtpResendTimeLeft] = useState(0);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
-  // Redirect if already logged in as staff/admin
+  const [otpCode, setOtpCode] = useState("");
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [verifyForm, setVerifyForm] = useState({ email: "" });
+  const [passwordForm, setPasswordForm] = useState({ 
+    newPassword: "", 
+    confirmPassword: "" 
+  });
+
+  // OTP resend timer - only runs when otpResendTimeLeft > 0
   useEffect(() => {
-    if (isAuthenticated && userRole) {
-      if (userRole === "admin") {
-        navigate("/admin/dashboard");
-      } else if (userRole === "staff") {
-        navigate("/staff/dashboard");
-      } else if (userRole === "patient") {
-        showToast("Wrong Portal", "This account is registered as a patient. Please use the Patient Portal.", "error");
-      }
+    if (otpResendTimeLeft > 0) {
+      const timer = setTimeout(() => setOtpResendTimeLeft(otpResendTimeLeft - 1), 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, userRole, navigate]);
+  }, [otpResendTimeLeft]);
+
+  // Check for email verified state from navigation
+  useEffect(() => {
+    if (location.state?.verified) {
+      showToast("Success", "Email verified successfully! You can now log in.", "success");
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate, showToast]);
+
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    const checkAuth = async () => {
+      setCheckingAuth(true);
+      
+      if (isAuthenticated) {
+        if (userRole === "admin") {
+          navigate("/admin/dashboard");
+          setCheckingAuth(false);
+          return;
+        } else if (userRole === "staff") {
+          try {
+            const { data, error } = await supabaseAdmin
+              .from("staff")
+              .select("user_id")
+              .eq("user_id", user?.id)
+              .single();
+            
+            if (error || !data) {
+              console.log("No staff record found");
+              setCheckingAuth(false);
+            } else {
+              navigate("/staff/dashboard");
+              setCheckingAuth(false);
+              return;
+            }
+          } catch (error) {
+            console.error("Error checking staff profile:", error);
+            setCheckingAuth(false);
+          }
+        } else if (userRole === "patient") {
+          showToast("Wrong Portal", "This account is registered as a patient. Please use the Patient Portal.", "error");
+          await supabase.auth.signOut();
+          setCheckingAuth(false);
+          return;
+        } else {
+          setCheckingAuth(false);
+        }
+      } else {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [isAuthenticated, userRole, user, navigate, showToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setHasShownDeactivatedToast(false);
 
     try {
-      if (!form.email || !form.password) {
+      if (!loginForm.email || !loginForm.password) {
         throw new Error("Please fill in all fields");
       }
 
-      await signIn(form.email, form.password);
-      // Navigation and role checking is now handled by the useEffect above
+      const email = loginForm.email.trim().toLowerCase();
+      console.log("Attempting sign in with:", email);
+      
+      // ============================================================
+      // CHECK IF ACCOUNT IS DEACTIVATED
+      // ============================================================
+      let isDeactivated = false;
+      let userId = null;
+      
+      try {
+        const { data: users, error: usersError } = await supabaseAdmin
+          .from("user_profiles")
+          .select("user_id, email")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (usersError) {
+          console.error("Error fetching user by email:", usersError);
+        } else if (users) {
+          userId = users.user_id;
+        }
+        
+        if (userId) {
+          const { data: staffData, error: staffError } = await supabaseAdmin
+            .from("staff")
+            .select("user_id, is_active")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (staffError) {
+            console.error("Error checking staff status:", staffError);
+          } else if (staffData && staffData.is_active === false) {
+            // ✅ Account is deactivated - show warning toast (like Welcome Back! but different)
+            isDeactivated = true;
+            if (!hasShownDeactivatedToast) {
+              setHasShownDeactivatedToast(true);
+              showToast("Account Deactivated", "Your account has been deactivated. Please contact the administrator.", "warning");
+            }
+            setLoading(false);
+            return;
+          } else if (!staffData) {
+            isDeactivated = true;
+            if (!hasShownDeactivatedToast) {
+              setHasShownDeactivatedToast(true);
+              showToast("Account Error", "No staff record found. Please contact the administrator.", "error");
+            }
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (checkError) {
+        console.error("Error checking staff status:", checkError);
+      }
+
+      // ============================================================
+      // If account is NOT deactivated, proceed with login
+      // ============================================================
+      if (!isDeactivated) {
+        try {
+          await signIn(email, loginForm.password);
+          console.log("Sign in successful!");
+          // ✅ "Welcome Back!" toast appears here (success type)
+          setLoading(false);
+          return;
+        } catch (loginError: any) {
+          if (loginError.message === "EMAIL_NOT_VERIFIED") {
+            console.log("Email not verified - switching to verify/setup tab");
+            showToast("Email Not Verified", "Please verify your email first.", "info");
+            setTab("verify-setup");
+            setVerifyForm({ email: email });
+            setOtpCode("");
+            setOtpError(null);
+            setOtpResendTimeLeft(0);
+            setIsEmailVerified(false);
+            setPasswordForm({ newPassword: "", confirmPassword: "" });
+            setPasswordError(null);
+            setLoading(false);
+            return;
+          }
+          throw loginError;
+        }
+      }
 
     } catch (err: any) {
-      showToast("Sign In Failed", err.message || "Authentication failed. Please check your credentials.", "error");
+      const errorMessage = err.message || "";
+      console.error("Login error:", errorMessage);
+      
+      if (errorMessage.toLowerCase().includes("email not confirmed") || 
+          errorMessage.toLowerCase().includes("verify your email") ||
+          errorMessage.toLowerCase().includes("confirm your email")) {
+        showToast("Verification Required", "Please verify your account first.", "info");
+        setTab("verify-setup");
+        setVerifyForm({ email: loginForm.email.trim().toLowerCase() });
+        setOtpCode("");
+        setOtpError(null);
+        setOtpResendTimeLeft(0);
+        setIsEmailVerified(false);
+        setPasswordForm({ newPassword: "", confirmPassword: "" });
+        setPasswordError(null);
+        setLoading(false);
+        return;
+      }
+      
+      if (errorMessage.toLowerCase().includes("invalid login credentials")) {
+        showToast("Login Failed", "Invalid email or password. Please check your credentials.", "error");
+        setLoading(false);
+        return;
+      }
+      
+      if (errorMessage.toLowerCase().includes("user not found")) {
+        showToast("Login Failed", "No account found with this email. Please check your email or contact the admin.", "error");
+        setLoading(false);
+        return;
+      }
+      
+      showToast("Login Failed", errorMessage || "Authentication failed. Please try again.", "error");
       console.error("Staff login error:", err);
       setLoading(false);
     }
-    // Note: We don't set loading to false in a finally block here because if successful, 
-    // we want the button to stay in the loading state until the redirect happens.
   };
+
+  // STEP 1: Verify OTP only
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const email = verifyForm.email.trim().toLowerCase();
+    
+    if (!email) {
+      showToast("Error", "Please enter your email address.", "error");
+      return;
+    }
+
+    if (otpCode.length !== 6) {
+      showToast("Error", "Please enter a valid 6-digit OTP code.", "error");
+      return;
+    }
+
+    setVerifying(true);
+    setOtpError(null);
+    
+    try {
+      console.log("🔍 Verifying OTP for:", email);
+      console.log("🔑 OTP Code:", otpCode);
+      
+      await verifyOtp(email, otpCode);
+      
+      console.log("✅ OTP verified successfully!");
+      showToast("Success", "Email verified! Now set your password.", "success");
+      
+      setIsEmailVerified(true);
+      setOtpError(null);
+      setOtpCode("");
+      
+      setTimeout(() => {
+        const passwordInput = document.querySelector('input[name="newPassword"]') as HTMLInputElement;
+        if (passwordInput) passwordInput.focus();
+      }, 300);
+      
+    } catch (err: any) {
+      console.error("❌ Verification error:", err);
+      const errorMessage = err.message || "Invalid OTP. Please check the code and try again.";
+      setOtpError(errorMessage);
+      showToast("Verification Failed", errorMessage, "error");
+      setOtpCode("");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // STEP 2: Set password after OTP is verified
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const { newPassword, confirmPassword } = passwordForm;
+    
+    if (!newPassword || !confirmPassword) {
+      setPasswordError("Please fill in all password fields.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    const email = verifyForm.email.trim().toLowerCase();
+    if (!email) {
+      setPasswordError("Email not found. Please go back and verify your email.");
+      return;
+    }
+
+    setSettingPassword(true);
+    setPasswordError(null);
+    
+    try {
+      await updatePassword(newPassword);
+      
+      console.log("✅ Password set successfully!");
+      showToast("Success", "Password set successfully! You can now log in.", "success");
+      
+      setPasswordForm({ newPassword: "", confirmPassword: "" });
+      setOtpCode("");
+      setIsEmailVerified(false);
+      setOtpResendTimeLeft(0);
+      
+      setTab("login");
+      setLoginForm({ email: email, password: "" });
+      
+      setTimeout(() => {
+        const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+        if (passwordInput) passwordInput.focus();
+      }, 300);
+      
+    } catch (err: any) {
+      console.error("❌ Password setup error:", err);
+      const errorMessage = err.message || "Failed to set password. Please try again.";
+      setPasswordError(errorMessage);
+      showToast("Error", errorMessage, "error");
+    } finally {
+      setSettingPassword(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (otpResendTimeLeft > 0 || resendingOtp) return;
+    
+    const email = verifyForm.email.trim().toLowerCase();
+    if (!email) {
+      showToast("Error", "Please enter your email address first.", "error");
+      return;
+    }
+
+    setResendingOtp(true);
+    setOtpError(null);
+    
+    try {
+      console.log("📧 Resending OTP to:", email);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: window.location.origin + "/staff/login",
+        },
+      });
+
+      if (error) {
+        console.error("❌ Resend OTP error:", error);
+        throw error;
+      }
+      
+      console.log("✅ New OTP sent successfully!");
+      showToast("Success", "A new 6-digit OTP has been sent to your email. Check your spam folder.", "success");
+      setOtpResendTimeLeft(60);
+      setOtpCode("");
+    } catch (err: any) {
+      console.error("❌ Resend OTP error:", err);
+      const errorMessage = err.message || "Failed to resend OTP. Please try again.";
+      setOtpError(errorMessage);
+      showToast("Error", errorMessage, "error");
+    } finally {
+      setResendingOtp(false);
+    }
+  };
+
+  const handleSwitchToVerifySetup = () => {
+    setTab("verify-setup");
+    setVerifyForm({ email: loginForm.email.trim().toLowerCase() || "" });
+    setOtpCode("");
+    setOtpError(null);
+    setOtpResendTimeLeft(0);
+    setIsEmailVerified(false);
+    setPasswordForm({ newPassword: "", confirmPassword: "" });
+    setPasswordError(null);
+  };
+
+  const handleSwitchToLogin = () => {
+    setTab("login");
+    setOtpError(null);
+    setPasswordError(null);
+    setIsEmailVerified(false);
+    setOtpResendTimeLeft(0);
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-green-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-green-950 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
-
-      {/* Floating Medical Doodles */}
-      {[
-        { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", x: "7%", y: "12%", size: 120, delay: 0, duration: 7 },
-        { icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", x: "87%", y: "9%", size: 96, delay: 1.2, duration: 8 },
-        { icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z", x: "5%", y: "72%", size: 108, delay: 0.7, duration: 9 },
-        { icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", x: "88%", y: "65%", size: 102, delay: 2.2, duration: 7 },
-        { icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01", x: "91%", y: "35%", size: 84, delay: 1.5, duration: 8 },
-        { icon: "M13 10V3L4 14h7v7l9-11h-7z", x: "3%", y: "40%", size: 78, delay: 0.3, duration: 6 },
-        { icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z", x: "76%", y: "87%", size: 90, delay: 2.8, duration: 10 },
-        { icon: "M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z", x: "17%", y: "86%", size: 72, delay: 3.2, duration: 7.5 },
-        { icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4", x: "58%", y: "4%", size: 84, delay: 1.9, duration: 9.5 },
-        { icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", x: "36%", y: "92%", size: 66, delay: 0.6, duration: 8 },
-      ].map((d, i) => (
-        <motion.div
-          key={i}
-          className="absolute pointer-events-none select-none"
-          style={{ left: d.x, top: d.y }}
-          animate={{ y: [0, -16, 0], rotate: [0, 8, -8, 0], opacity: [0.2, 0.35, 0.2] }}
-          transition={{ duration: d.duration, delay: d.delay, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <svg width={d.size} height={d.size} viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-            <path d={d.icon} />
-          </svg>
-        </motion.div>
-      ))}
 
       <button
         onClick={() => navigate("/")}
@@ -105,67 +440,398 @@ export default function StaffLogin() {
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-2xl">
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="staff@spdizon-clinic.ph"
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
-                />
-              </div>
-            </div>
+        <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+          <div className="flex border-b border-white/10">
+            {(["login", "verify-setup"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setTab(t);
+                  if (t === "verify-setup") {
+                    setVerifyForm({ email: loginForm.email.trim().toLowerCase() || "" });
+                    setOtpCode("");
+                    setOtpError(null);
+                    setOtpResendTimeLeft(0);
+                    setIsEmailVerified(false);
+                    setPasswordForm({ newPassword: "", confirmPassword: "" });
+                    setPasswordError(null);
+                  } else {
+                    setOtpError(null);
+                    setPasswordError(null);
+                  }
+                }}
+                className={`flex-1 py-4 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                  tab === t
+                    ? "text-green-400 border-b-2 border-green-500 bg-white/5"
+                    : "text-gray-400 hover:text-gray-300"
+                }`}
+              >
+                {t === "login" ? (
+                  <><Lock className="w-4 h-4" /> Sign In</>
+                ) : (
+                  <><UserPlus className="w-4 h-4" /> Verify & Setup</>
+                )}
+              </button>
+            ))}
+          </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-semibold text-gray-300">Password</label>
-                <Link to="/staff/forgot-password" className="text-xs text-green-400 hover:text-green-300 font-medium transition-colors">
-                  Forgot Password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type={showPass ? "text" : "password"}
-                  required
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+          <div className="p-6 sm:p-8">
+            <AnimatePresence mode="wait">
+              {tab === "login" && (
+                <motion.form
+                  key="login"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.25 }}
+                  onSubmit={handleLogin}
+                  className="space-y-5"
                 >
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="email"
+                        required
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                        placeholder="your-email@gmail.com"
+                        className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
 
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span className="pointer-events-none">Authenticating...</span>
-                </>
-              ) : (
-                <span className="pointer-events-none">Sign In</span>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-semibold text-gray-300">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/staff/forgot-password")}
+                        className="text-xs text-green-400 hover:text-green-300 font-medium"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type={showPass ? "text" : "password"}
+                        required
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                        placeholder="Enter your account password"
+                        className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(!showPass)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      >
+                        {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span className="pointer-events-none">Signing in...</span>
+                      </>
+                    ) : (
+                      <span className="pointer-events-none">Sign In</span>
+                    )}
+                  </motion.button>
+
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">
+                      Need to verify your account and set up a password?{" "}
+                      <button
+                        type="button"
+                        onClick={handleSwitchToVerifySetup}
+                        className="text-green-400 hover:text-green-300 font-semibold"
+                      >
+                        Verify & Setup
+                      </button>
+                    </p>
+                  </div>
+                </motion.form>
               )}
-            </motion.button>
-          </form>
+
+              {tab === "verify-setup" && (
+                <div className="space-y-5">
+                  {!isEmailVerified ? (
+                    <motion.form
+                      key="verify"
+                      initial={{ opacity: 0, x: 0 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 0 }}
+                      onSubmit={handleVerifyOTP}
+                      className="space-y-5"
+                    >
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/20">
+                          <Shield className="w-8 h-8 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">Verify Your Email</h3>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Enter the 6-digit OTP code sent to your email
+                        </p>
+                      </div>
+
+                      {otpError && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 flex items-start gap-2"
+                        >
+                          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-red-200/80">{otpError}</p>
+                        </motion.div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="email"
+                            required
+                            value={verifyForm.email}
+                            onChange={(e) => {
+                              setVerifyForm({ ...verifyForm, email: e.target.value });
+                              setOtpError(null);
+                            }}
+                            placeholder="your-email@gmail.com"
+                            className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">6-Digit OTP Code</label>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              setOtpCode(val);
+                              setOtpError(null);
+                            }}
+                            placeholder="Enter 6-digit code"
+                            className={`w-full pl-10 pr-4 py-3 bg-white/10 border rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent text-center text-2xl tracking-widest font-mono ${
+                              otpError ? "border-red-500/50" : "border-white/10"
+                            }`}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-400">
+                            Enter the 6-digit OTP code sent to your email
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleResendOTP}
+                            disabled={otpResendTimeLeft > 0 || resendingOtp}
+                            className={`text-xs font-semibold transition-colors ${
+                              otpResendTimeLeft > 0 || resendingOtp
+                                ? "text-gray-500 cursor-not-allowed"
+                                : "text-green-400 hover:text-green-300"
+                            }`}
+                          >
+                            {resendingOtp ? (
+                              <>
+                                <div className="inline-block w-3 h-3 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin mr-1" />
+                                Sending...
+                              </>
+                            ) : otpResendTimeLeft > 0 ? (
+                              `Resend in ${otpResendTimeLeft}s`
+                            ) : (
+                              "Resend OTP"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        type="submit"
+                        disabled={verifying || otpCode.length !== 6}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                      >
+                        {verifying ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Verifying OTP...</span>
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound className="w-4 h-4" />
+                            <span>Verify OTP</span>
+                          </>
+                        )}
+                      </motion.button>
+
+                      <div className="p-3 bg-white/5 rounded-2xl border border-green-500/20">
+                        <p className="text-xs text-gray-400 text-center">
+                          <CheckCircle className="w-3.5 h-3.5 inline mr-1 text-green-400" />
+                          Enter the OTP code from your email to verify your account.
+                        </p>
+                      </div>
+                    </motion.form>
+                  ) : (
+                    <motion.form
+                      key="set-password"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      onSubmit={handleSetPassword}
+                      className="space-y-5"
+                    >
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-500/20">
+                          <CheckCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">Set Your Password</h3>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Create a password for <span className="text-green-400">{verifyForm.email}</span>
+                        </p>
+                      </div>
+
+                      {passwordError && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 flex items-start gap-2"
+                        >
+                          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-red-200/80">{passwordError}</p>
+                        </motion.div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-300 mb-2">New Password</label>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type={showNewPass ? "text" : "password"}
+                              name="newPassword"
+                              required
+                              value={passwordForm.newPassword}
+                              onChange={(e) => {
+                                setPasswordForm({ ...passwordForm, newPassword: e.target.value });
+                                setPasswordError(null);
+                              }}
+                              placeholder="Min. 6 chars"
+                              className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPass(!showNewPass)}
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                            >
+                              {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-300 mb-2">Confirm Password</label>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type={showConfirmPass ? "text" : "password"}
+                              required
+                              value={passwordForm.confirmPassword}
+                              onChange={(e) => {
+                                setPasswordForm({ ...passwordForm, confirmPassword: e.target.value });
+                                setPasswordError(null);
+                              }}
+                              placeholder="Confirm"
+                              className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPass(!showConfirmPass)}
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                            >
+                              {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEmailVerified(false);
+                            setOtpCode("");
+                            setOtpResendTimeLeft(0);
+                          }}
+                          className="flex-1 py-3.5 text-sm font-semibold text-gray-400 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors"
+                        >
+                          Back
+                        </button>
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
+                          type="submit"
+                          disabled={settingPassword}
+                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                        >
+                          {settingPassword ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Setting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4" />
+                              <span>Set Password</span>
+                            </>
+                          )}
+                        </motion.button>
+                      </div>
+
+                      <div className="p-3 bg-white/5 rounded-2xl border border-green-500/20">
+                        <p className="text-xs text-gray-400 text-center">
+                          <CheckCircle className="w-3.5 h-3.5 inline mr-1 text-green-400" />
+                          Create a secure password for your account.
+                        </p>
+                      </div>
+                    </motion.form>
+                  )}
+
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">
+                      Already have a password?{" "}
+                      <button
+                        type="button"
+                        onClick={handleSwitchToLogin}
+                        className="text-green-400 hover:text-green-300 font-semibold"
+                      >
+                        Sign In
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+
+        <p className="text-center text-xs text-gray-500 mt-6">
+          This portal is for authorized staff and admin personnel only.
+        </p>
       </motion.div>
     </div>
   );
