@@ -166,7 +166,7 @@ export default function LandingPage() {
                 onClick={() => navigate("/staff/login")}
                 className="text-sm font-semibold text-green-700 hover:text-green-800 transition-colors px-4 py-2 rounded-2xl hover:bg-green-50"
               >
-                Staff / Admin
+                Admin / Staff
               </button>
               <button
                 onClick={() => navigate("/patient/login")}
