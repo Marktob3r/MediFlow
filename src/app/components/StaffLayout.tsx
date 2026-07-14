@@ -4,14 +4,11 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Activity,
   LayoutDashboard,
-  Users,
   Settings,
   LogOut,
-  Bell,
   Menu,
   X,
   ChevronRight,
-  ListOrdered,
   UserPlus,
   FileText,
 } from "lucide-react";
@@ -27,6 +24,8 @@ export default function StaffLayout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [staffName, setStaffName] = useState<string>("");
+  const [staffRole, setStaffRole] = useState<string>("Staff");
 
   useEffect(() => {
     const handleResize = () => {
@@ -48,6 +47,70 @@ export default function StaffLayout() {
       }
     }
   }, [isAuthenticated, userRole, navigate]);
+
+  // Fetch staff name and role
+  useEffect(() => {
+    const fetchStaffInfo = async () => {
+      if (!user?.id) return;
+
+      try {
+        // ✅ FIX: Remove "id" from select - only select what exists
+        const { data: staffData, error: staffError } = await supabase
+          .from("staff")
+          .select("user_id, specialization, department")
+          .eq("user_id", user.id)
+          .single();
+
+        if (staffError) {
+          console.warn("Staff record not found for user:", user.id);
+          // Fallback to user profile
+          const { data: profileData } = await supabase
+            .from("user_profiles")
+            .select("first_name, last_name")
+            .eq("user_id", user.id)
+            .single();
+          
+          if (profileData) {
+            const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+            setStaffName(fullName || user.email?.split('@')[0] || "Staff");
+          } else {
+            setStaffName(user.email?.split('@')[0] || "Staff");
+          }
+          setStaffRole("Staff");
+        } else {
+          // Get user profile for the name
+          const { data: profileData, error: profileError } = await supabase
+            .from("user_profiles")
+            .select("first_name, last_name")
+            .eq("user_id", user.id)
+            .single();
+
+          if (profileError) {
+            console.warn("Profile not found:", profileError);
+            setStaffName(user.email?.split('@')[0] || "Staff");
+          } else {
+            const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+            setStaffName(fullName || user.email?.split('@')[0] || "Staff");
+          }
+
+          // Set staff role/specialization
+          if (staffData.specialization) {
+            setStaffRole(staffData.specialization);
+          } else if (staffData.department) {
+            setStaffRole(staffData.department);
+          } else {
+            setStaffRole("Staff");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching staff info:", error);
+        setStaffName(user?.email?.split('@')[0] || "Staff");
+        setStaffRole("Staff");
+      }
+    };
+
+    fetchStaffInfo();
+  }, [user]);
 
   // Fetch notification count
   useEffect(() => {
@@ -83,7 +146,6 @@ export default function StaffLayout() {
 
   const staffNavItems = [
     { path: "/staff/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/staff/queue", icon: ListOrdered, label: "Manage Live Queue" },
     { path: "/staff/walkin", icon: UserPlus, label: "Walk-in Registration" },
     { path: "/staff/records", icon: FileText, label: "Patient Records" },
     { path: "/staff/settings", icon: Settings, label: "Settings" },
@@ -110,8 +172,10 @@ export default function StaffLayout() {
     );
   };
 
-  // Get user initial
   const getUserInitial = () => {
+    if (staffName) {
+      return staffName.charAt(0).toUpperCase();
+    }
     if (user?.first_name) {
       return user.first_name.charAt(0).toUpperCase();
     }
@@ -162,22 +226,24 @@ export default function StaffLayout() {
           </div>
         </div>
 
-        {/* Staff Info - DYNAMIC */}
+        {/* Staff Info - DYNAMIC with actual staff name and role */}
         <div className="px-4 py-4 border-b border-gray-100">
           <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 {getUserInitial()}
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 text-sm truncate">
-                  {user?.first_name} {user?.last_name}
+                  {staffName || user?.first_name || "Staff"}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
                     Staff
                   </span>
-                  <span className="text-xs text-gray-400">Front Desk</span>
+                  <span className="text-xs text-gray-400 truncate">
+                    {staffRole}
+                  </span>
                 </div>
               </div>
             </div>
