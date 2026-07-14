@@ -24,7 +24,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    
+    /* ✅ ADDED: Suppress the baseUrl deprecation warning */
+    "ignoreDeprecations": "6.0",
+    
+    /* ✅ ADDED: Vite types for import.meta.env */
+    "types": ["vite/client"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
