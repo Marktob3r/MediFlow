@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Heart, Users, CheckCircle, Activity, LogOut, AlertCircle } from "lucide-react";
+import { User, Heart, Users, CheckCircle, Activity, LogOut, AlertCircle, Calendar, Phone, Cake } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
 import { useToast } from "../../contexts/ToastContext";
@@ -16,15 +16,37 @@ export default function PatientOnboarding() {
   const [onboardingForm, setOnboardingForm] = useState({
     date_of_birth: "",
     gender: "",
+    phone: "",
     blood_type: "",
     address: "",
-    phone: "",
     emergency_contact: "",
     emergency_phone: "",
   });
   const [savingOnboarding, setSavingOnboarding] = useState(false);
 
-  // Lock body scroll and clear any lingering toasts (e.g. "Welcome Back") on mount
+  // Auto-calculate age when date of birth changes
+  const calculateAge = (dob: string) => {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? age : null;
+  };
+
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
+  const handleDateOfBirthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dob = e.target.value;
+    const age = calculateAge(dob);
+    setCalculatedAge(age);
+    setOnboardingForm({ ...onboardingForm, date_of_birth: dob });
+  };
+
+  // Lock body scroll and clear any lingering toasts on mount
   useEffect(() => {
     document.body.style.overflow = "hidden";
     clearToasts();
@@ -42,17 +64,25 @@ export default function PatientOnboarding() {
   const fetchPartialData = async () => {
     try {
       setLoading(true);
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", user?.id)
         .single();
 
-      const { data: patientData } = await supabase
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error("Profile fetch error:", profileError);
+      }
+
+      const { data: patientData, error: patientError } = await supabase
         .from("patients")
         .select("*")
         .eq("user_id", user?.id)
         .single();
+
+      if (patientError && patientError.code !== "PGRST116") {
+        console.error("Patient fetch error:", patientError);
+      }
 
       const isProfileComplete =
         profileData?.date_of_birth &&
@@ -68,17 +98,22 @@ export default function PatientOnboarding() {
         return;
       }
 
+      // Set calculated age if date_of_birth exists
+      if (profileData?.date_of_birth) {
+        setCalculatedAge(calculateAge(profileData.date_of_birth));
+      }
+
       setOnboardingForm({
         date_of_birth: profileData?.date_of_birth || "",
         gender: profileData?.gender || "",
+        phone: profileData?.phone || "",
         blood_type: patientData?.blood_type || "",
         address: profileData?.address || "",
-        phone: profileData?.phone || "",
         emergency_contact: patientData?.emergency_contact || "",
         emergency_phone: patientData?.emergency_phone || "",
       });
     } catch (err) {
-      console.error(err);
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -93,22 +128,33 @@ export default function PatientOnboarding() {
     e.preventDefault();
     setSavingOnboarding(true);
     try {
-      if (!onboardingForm.date_of_birth || !onboardingForm.gender || !onboardingForm.blood_type || !onboardingForm.address || !onboardingForm.phone || !onboardingForm.emergency_contact || !onboardingForm.emergency_phone) {
+      if (!onboardingForm.date_of_birth || !onboardingForm.gender || !onboardingForm.phone || 
+          !onboardingForm.blood_type || !onboardingForm.address || 
+          !onboardingForm.emergency_contact || !onboardingForm.emergency_phone) {
         throw new Error("Please fill in all required fields to continue.");
       }
 
+      // Calculate age one more time before saving
+      const ageToSave = calculateAge(onboardingForm.date_of_birth);
+
+      // Save to user_profiles with age
       const { error: profileError } = await supabase
         .from("user_profiles")
         .update({
           date_of_birth: onboardingForm.date_of_birth,
+          age: ageToSave,
           gender: onboardingForm.gender,
           address: onboardingForm.address,
           phone: onboardingForm.phone,
         })
         .eq("user_id", user?.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+        throw profileError;
+      }
 
+      // Save to patients
       const { error: patientError } = await supabase
         .from("patients")
         .update({
@@ -119,11 +165,15 @@ export default function PatientOnboarding() {
         })
         .eq("user_id", user?.id);
 
-      if (patientError) throw patientError;
+      if (patientError) {
+        console.error("Patient update error:", patientError);
+        throw patientError;
+      }
 
       showToast("Profile Completed!", "Your information has been saved successfully.", "success");
       navigate("/patient/dashboard", { replace: true });
     } catch (err: any) {
+      console.error("Save error:", err);
       showToast("Error", err.message || "Failed to complete onboarding", "error");
     } finally {
       setSavingOnboarding(false);
@@ -149,7 +199,6 @@ export default function PatientOnboarding() {
   const canProceedStep2 = onboardingForm.blood_type && onboardingForm.address.trim().length > 0;
 
   return (
-    /* fixed inset-0 + overflow-y-auto = single scrollbar owned by this layer, body locked */
     <div className="fixed inset-0 overflow-y-auto bg-gradient-to-br from-green-50 via-white to-emerald-50">
       {/* Ambient blobs */}
       <div className="pointer-events-none fixed top-0 right-0 w-96 h-96 bg-green-100 rounded-full opacity-30 -translate-y-1/2 translate-x-1/2 blur-3xl" />
@@ -172,7 +221,7 @@ export default function PatientOnboarding() {
         </button>
       </div>
 
-      {/* Page body — min-h so short-content steps still fill the screen */}
+      {/* Page body */}
       <div className="flex flex-col items-center justify-center px-4 pb-10 min-h-[calc(100vh-64px)]">
         <div className="w-full max-w-lg">
 
@@ -196,12 +245,11 @@ export default function PatientOnboarding() {
             </p>
           </motion.div>
 
-          {/* Step indicator — fixed width so it's truly centered */}
+          {/* Step indicator */}
           <div className="flex items-center justify-center mb-6">
             <div className="flex items-center gap-0">
               {steps.map((s, i) => (
                 <div key={s.id} className="flex items-center">
-                  {/* Circle */}
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${
                     s.id < onboardingStep
                       ? "bg-green-500 text-white"
@@ -211,7 +259,6 @@ export default function PatientOnboarding() {
                   }`}>
                     {s.id < onboardingStep ? <CheckCircle className="w-4 h-4" /> : s.id}
                   </div>
-                  {/* Connector line */}
                   {i < steps.length - 1 && (
                     <div className="w-16 h-0.5 rounded-full overflow-hidden bg-gray-200 mx-1">
                       <motion.div
@@ -242,17 +289,24 @@ export default function PatientOnboarding() {
                   className="p-6 sm:p-7 space-y-5"
                 >
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Date of Birth</label>
-                    <input
-                      type="date"
-                      required
-                      value={onboardingForm.date_of_birth}
-                      onChange={(e) => setOnboardingForm({ ...onboardingForm, date_of_birth: e.target.value })}
-                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
-                    />
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Date of Birth *</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="date"
+                        required
+                        value={onboardingForm.date_of_birth}
+                        onChange={handleDateOfBirthChange}
+                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                      />
+                    </div>
+                    {onboardingForm.date_of_birth && calculatedAge !== null && (
+                      <p className="text-xs text-green-600 mt-1.5 ml-1">Age: {calculatedAge} years old</p>
+                    )}
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Biological Sex</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Biological Sex *</label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -278,10 +332,12 @@ export default function PatientOnboarding() {
                       </button>
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number *</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
                       <input
                         type="text"
                         required
@@ -289,7 +345,7 @@ export default function PatientOnboarding() {
                         value={onboardingForm.phone}
                         onChange={(e) => setOnboardingForm({ ...onboardingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                         placeholder="09XXXXXXXXX"
-                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        className="w-full pl-16 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
                       />
                     </div>
                     {onboardingForm.phone.length > 0 && onboardingForm.phone.length < 11 && (
@@ -310,7 +366,7 @@ export default function PatientOnboarding() {
                   className="p-6 sm:p-7 space-y-5"
                 >
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Blood Type</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Blood Type *</label>
                     <div className="grid grid-cols-4 gap-2.5">
                       {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bt) => (
                         <button
@@ -329,7 +385,7 @@ export default function PatientOnboarding() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Home Address</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Home Address *</label>
                     <textarea
                       required
                       rows={3}
@@ -359,7 +415,7 @@ export default function PatientOnboarding() {
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Full Name *</label>
                     <input
                       type="text"
                       required
@@ -370,9 +426,10 @@ export default function PatientOnboarding() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Phone Number *</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">🇵🇭</span>
                       <input
                         type="text"
                         required
@@ -380,7 +437,7 @@ export default function PatientOnboarding() {
                         value={onboardingForm.emergency_phone}
                         onChange={(e) => setOnboardingForm({ ...onboardingForm, emergency_phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                         placeholder="09XXXXXXXXX"
-                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
+                        className="w-full pl-16 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 transition-all"
                       />
                     </div>
                   </div>
