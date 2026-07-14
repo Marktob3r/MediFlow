@@ -9,15 +9,16 @@ import AdminLayout from "./components/AdminLayout";
 import LandingPage from "./components/LandingPage";
 import PatientLogin from "./components/PatientLogin";
 import VerifyOTP from "./components/VerifyOTP";
+import StaffVerifyOTP from "./components/StaffVerifyOTP";
 import PatientDashboard from "./components/PatientDashboard";
 import PatientOnboarding from "./components/PatientOnboarding";
 import PatientForgotPassword from "./components/PatientForgotPassword";
 import JoinQueue from "./components/JoinQueue";
 import LiveQueueMonitor from "./components/LiveQueueMonitor";
-import MedicalHistory from "./components/MedicalHistory";
 import PatientSettings from "./components/PatientSettings";
 import StaffLogin from "./components/StaffLogin";
 import StaffDashboard from "./components/StaffDashboard";
+import StaffMedicalHistory from "./components/StaffMedicalHistory";
 import WalkInRegistration from "./components/WalkInRegistration";
 import AdminDashboard from "./components/AdminDashboard";
 import StaffForgotPassword from "./components/StaffForgotPassword";
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
   {
     path: "/staff/login",
     element: <StaffLogin />,
+  },
+  {
+    path: "/staff/verify",
+    element: <StaffVerifyOTP />,
   },
   {
     path: "/staff/forgot-password",
@@ -94,10 +99,6 @@ export const router = createBrowserRouter([
         element: <LiveQueueMonitor />,
       },
       {
-        path: "medical-history",
-        element: <MedicalHistory />,
-      },
-      {
         path: "settings",
         element: <PatientSettings />,
       },
@@ -127,17 +128,14 @@ export const router = createBrowserRouter([
       },
       {
         path: "queue",
-        // PLACEHOLDER: Add full queue management page (filters, search, bulk actions)
         element: <StaffDashboard />,
       },
       {
         path: "records",
-        // PLACEHOLDER: Add full patient records management page
-        element: <MedicalHistory />,
+        element: <StaffMedicalHistory />,
       },
       {
         path: "settings",
-        // PLACEHOLDER: Add staff-specific settings page
         element: <PatientSettings />,
       },
     ],
