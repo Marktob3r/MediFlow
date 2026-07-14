@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useState, useMemo } from "react";
 import { supabase } from "../config/supabase";
 import { useToast } from "./ToastContext";
 
@@ -29,7 +29,7 @@ export interface AuthContextType {
   updatePassword: (password: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -37,29 +37,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { showToast } = useToast();
 
-  // Helper to fetch full user profile and role from the database
   const fetchUserProfile = async (userId: string, email: string) => {
     try {
-      // Fetch Profile
       const { data: profileData, error: profileError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", userId)
         .single();
 
-      // Fetch Role
       const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .single();
 
-      if (profileError || roleError) {
-        console.error("Error fetching user data:", profileError || roleError);
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error("Error fetching user profile:", profileError);
+      }
+      if (roleError && roleError.code !== "PGRST116") {
+        console.error("Error fetching user role:", roleError);
       }
 
       let is_active = true;
-
       const role: UserRole = roleData?.role || "patient";
 
       if (role === "staff" || role === "admin") {
@@ -74,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (!is_active) {
-        // Sign out deactivated users immediately
         await supabase.auth.signOut();
         setUser(null);
         setUserRole(null);
@@ -85,9 +83,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const authUser: AuthUser = {
         id: userId,
         email: email,
-        first_name: profileData?.first_name,
-        last_name: profileData?.last_name,
-        phone: profileData?.phone,
+        first_name: profileData?.first_name || "",
+        last_name: profileData?.last_name || "",
+        phone: profileData?.phone || null,
         role: role,
         is_active: is_active,
       };
@@ -97,8 +95,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
     } catch (err) {
       console.error("Failed to assemble user profile", err);
-      // CRITICAL: ensure loading is cleared even on failure so the app
-      // never hangs on a permanent spinner
       setUser(null);
       setUserRole(null);
       setLoading(false);
@@ -106,7 +102,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email!);
@@ -115,7 +110,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -143,54 +137,97 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             first_name: userData.first_name,
             last_name: userData.last_name,
             phone: userData.phone || null,
-            role: "patient",
+            role: userData.role || "patient",
           },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Signup error:", error);
+        throw error;
+      }
 
-      // If Supabase returns a session immediately, email confirmation is disabled
-      // If no session, it means email confirmation is required
       const needsEmailConfirmation = !data.session;
       console.log(needsEmailConfirmation ? "Signup: email confirmation required." : "Signup: logged in directly (no email confirmation).");
+      
       return { needsEmailConfirmation };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign up error:", error);
-      throw error;
+      throw error; 
     }
   };
 
   const verifyOtp = async (email: string, token: string) => {
     try {
-      console.log("Verifying OTP...");
+      console.log("🔍 Verifying OTP for:", email);
+      console.log("🔑 OTP Code:", token);
+      
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
-        type: 'signup'
+        type: 'email'
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ OTP verification error:", error);
+        throw error;
+      }
       
-      // onAuthStateChange will catch the session and fetch the profile
-    } catch (error) {
-      console.error("Verify OTP error:", error);
+      console.log("✅ OTP verified successfully!");
+      showToast("Success", "Email verified successfully!", "success");
+    } catch (error: any) {
+      console.error("❌ Verify OTP error:", error);
+      showToast("Error", error.message || "OTP verification failed. Please try again.", "error");
       throw error;
     }
   };
 
+  // ============================================================
+  // ✅ FIXED: resendOtp function - Properly resends OTP
+  // ============================================================
   const resendOtp = async (email: string) => {
     try {
-      console.log("Resending OTP...");
-      const { error } = await supabase.auth.resend({
+      console.log("📧 Resending OTP to:", email);
+      
+      // Use supabase.auth.resend() with type 'signup' for OTP
+      const { data, error } = await supabase.auth.resend({
         type: 'signup',
-        email,
+        email: email,
+        options: {
+          emailRedirectTo: window.location.origin + "/staff/login",
+        },
       });
 
-      if (error) throw error;
-      console.log("OTP resent successfully.");
-    } catch (error) {
-      console.error("Resend OTP error:", error);
+      if (error) {
+        console.error("❌ Resend OTP error:", error);
+        
+        // If the error is about the user not being confirmed or already exists,
+        // try using signUp as fallback (this works because the user already exists)
+        console.log("🔄 Trying fallback method with signUp...");
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: 'temporary-password-123',
+          options: {
+            emailRedirectTo: window.location.origin + "/staff/login",
+          },
+        });
+        
+        if (signUpError) {
+          console.error("❌ Fallback signUp error:", signUpError);
+          throw signUpError;
+        }
+        
+        console.log("✅ OTP sent successfully via fallback!");
+        showToast("Success", "A new OTP has been sent to your email. Check your spam folder.", "success");
+        return;
+      }
+      
+      console.log("✅ OTP resent successfully!");
+      console.log("📧 Response:", data);
+      showToast("Success", "A new OTP has been sent to your email. Check your spam folder if you don't see it.", "success");
+    } catch (error: any) {
+      console.error("❌ Resend OTP error:", error);
+      showToast("Error", error.message || "Failed to resend OTP. Please try again later.", "error");
       throw error;
     }
   };
@@ -204,12 +241,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Sign in error:", error);
+        throw error;
+      }
+
+      if (!data.user?.email_confirmed_at) {
+        await supabase.auth.signOut();
+        throw new Error("EMAIL_NOT_VERIFIED: Please verify your email using the OTP sent to you.");
+      }
+
+      if (data.user) {
+        try {
+          const { error: sessionError } = await supabase
+            .from("user_sessions")
+            .upsert({
+              user_id: data.user.id,
+              last_sign_in_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' });
+          
+          if (sessionError) {
+            console.warn("Could not update user_sessions (non-critical):", sessionError.message);
+          } else {
+            console.log("✅ Updated last sign-in time for user:", data.user.email);
+          }
+        } catch (sessionError) {
+          console.warn("Could not update user_sessions (non-critical):", sessionError);
+        }
+      }
 
       showToast("Welcome Back!", "You have successfully logged in.", "success");
-      // onAuthStateChange will handle fetching profile
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign in error:", error);
+      
+      if (error.message?.includes("EMAIL_NOT_VERIFIED")) {
+        throw new Error("EMAIL_NOT_VERIFIED");
+      }
+      
       throw error;
     }
   };
@@ -227,11 +296,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const sendPasswordResetOtp = async (email: string) => {
     try {
       console.log("Sending password reset OTP...");
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/staff/reset-password",
+      });
       if (error) throw error;
       console.log("Password reset OTP sent successfully.");
-    } catch (error) {
+      showToast("Success", "Password reset OTP sent to your email.", "success");
+    } catch (error: any) {
       console.error("Reset password error:", error);
+      showToast("Error", error.message || "Failed to send password reset email.", "error");
       throw error;
     }
   };
@@ -246,8 +319,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       if (error) throw error;
       console.log("Password reset OTP verified successfully.");
-    } catch (error) {
+      showToast("Success", "Password reset verified. You can now set a new password.", "success");
+    } catch (error: any) {
       console.error("Verify reset OTP error:", error);
+      showToast("Error", error.message || "Failed to verify password reset OTP.", "error");
       throw error;
     }
   };
@@ -260,13 +335,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       if (error) throw error;
       console.log("Password updated successfully.");
-    } catch (error) {
+      showToast("Success", "Password updated successfully!", "success");
+    } catch (error: any) {
       console.error("Update password error:", error);
+      showToast("Error", error.message || "Failed to update password.", "error");
       throw error;
     }
   };
 
-  const value: AuthContextType = {
+  const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated: !!user,
@@ -279,7 +356,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sendPasswordResetOtp,
     verifyPasswordResetOtp,
     updatePassword,
-  };
+  }), [user, loading, userRole]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
