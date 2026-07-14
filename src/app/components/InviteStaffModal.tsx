@@ -35,7 +35,15 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+    // Get values with proper types
+    const firstName: string = formData.firstName.trim();
+    const lastName: string = formData.lastName.trim();
+    const email: string = formData.email.trim();
+    const role: "staff" | "admin" = formData.role;
+    const department: string = formData.department || "Front Desk";
+    const specialization: string = formData.specialization || "";
+    
+    if (!firstName || !lastName || !email) {
       showToast("Error", "Please fill in all required fields.", "error");
       return;
     }
@@ -43,20 +51,23 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteS
     setLoading(true);
     try {
       const result = await inviteStaffMember({
-        email: formData.email.trim(),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        role: formData.role,
-        department: formData.department,
-        specialization: formData.specialization,
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+        role: role,
+        department: department,
+        specialization: specialization,
       });
 
-      if (result.success) {
+      // ✅ FIX: Check success first, then access the appropriate property
+      if (result.success && result.message) {
         showToast("Success", result.message, "success");
         onSuccess();
         handleClose();
+      } else if (result.error) {
+        showToast("Error", result.error, "error");
       } else {
-        showToast("Error", result.error || "Failed to send invitation.", "error");
+        showToast("Error", "Failed to send invitation. Please try again.", "error");
       }
     } catch (error: any) {
       showToast("Error", error.message || "Failed to send invitation.", "error");
