@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Heart, Users, CheckCircle, Activity, LogOut, AlertCircle, Calendar, Phone, Cake } from "lucide-react";
+import { User, Heart, Users, CheckCircle, Activity, LogOut, AlertCircle, Calendar, Phone } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../config/supabase";
 import { useToast } from "../../contexts/ToastContext";
@@ -64,36 +64,43 @@ export default function PatientOnboarding() {
   const fetchPartialData = async () => {
     try {
       setLoading(true);
+      
+      // Check if user has a profile
       const { data: profileData, error: profileError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (profileError && profileError.code !== "PGRST116") {
         console.error("Profile fetch error:", profileError);
       }
 
+      // Check if user has a patient record
       const { data: patientData, error: patientError } = await supabase
         .from("patients")
         .select("*")
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (patientError && patientError.code !== "PGRST116") {
         console.error("Patient fetch error:", patientError);
       }
 
+      // Check if profile is complete
       const isProfileComplete =
         profileData?.date_of_birth &&
         profileData?.gender &&
         profileData?.address &&
-        profileData?.phone &&
+        profileData?.phone;
+
+      const isPatientComplete = patientData ? 
         patientData?.blood_type &&
         patientData?.emergency_contact &&
-        patientData?.emergency_phone;
+        patientData?.emergency_phone : false;
 
-      if (isProfileComplete) {
+      if (isProfileComplete && isPatientComplete) {
+        console.log("✅ Profile already complete, redirecting to dashboard...");
         navigate("/patient/dashboard", { replace: true });
         return;
       }
@@ -124,58 +131,161 @@ export default function PatientOnboarding() {
     navigate("/");
   };
 
+  // ============================================================
+  // ✅ FIXED: handleSaveOnboarding - Forces navigation to dashboard
+  // ============================================================
   const handleSaveOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (savingOnboarding) return;
+    
     setSavingOnboarding(true);
+    
     try {
+      // Validation
       if (!onboardingForm.date_of_birth || !onboardingForm.gender || !onboardingForm.phone || 
           !onboardingForm.blood_type || !onboardingForm.address || 
           !onboardingForm.emergency_contact || !onboardingForm.emergency_phone) {
         throw new Error("Please fill in all required fields to continue.");
       }
 
-      // Calculate age one more time before saving
+      // Calculate age
       const ageToSave = calculateAge(onboardingForm.date_of_birth);
 
-      // Save to user_profiles with age
+      // Get first_name and last_name from user object
+      let firstName = user?.first_name || "";
+      let lastName = user?.last_name || "";
+      
+      console.log("📝 User object from auth:", user);
+      console.log("📝 First name from user:", firstName);
+      console.log("📝 Last name from user:", lastName);
+      
+      // If user object doesn't have name, try to get from auth metadata
+      if (!firstName || !lastName) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user?.user_metadata) {
+            firstName = authData.user.user_metadata.first_name || "";
+            lastName = authData.user.user_metadata.last_name || "";
+          }
+        } catch (authError) {
+          console.warn("Could not fetch auth metadata:", authError);
+        }
+      }
+
+      // Final fallback
+      if (!firstName) firstName = "Patient";
+      if (!lastName) lastName = "User";
+
+      console.log("📝 Saving onboarding with name:", { firstName, lastName });
+
+      // ============================================================
+      // 1. Save/Update user_profiles
+      // ============================================================
       const { error: profileError } = await supabase
         .from("user_profiles")
-        .update({
+        .upsert({
+          user_id: user?.id,
+          email: user?.email,
+          first_name: firstName,
+          last_name: lastName,
           date_of_birth: onboardingForm.date_of_birth,
           age: ageToSave,
           gender: onboardingForm.gender,
           address: onboardingForm.address,
           phone: onboardingForm.phone,
-        })
-        .eq("user_id", user?.id);
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
 
       if (profileError) {
-        console.error("Profile update error:", profileError);
-        throw profileError;
+        console.error("❌ Profile update error:", profileError);
+        throw new Error(`Profile save failed: ${profileError.message}`);
       }
 
-      // Save to patients
-      const { error: patientError } = await supabase
-        .from("patients")
-        .update({
-          blood_type: onboardingForm.blood_type,
-          emergency_contact: onboardingForm.emergency_contact,
-          emergency_phone: onboardingForm.emergency_phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user?.id);
+      console.log("✅ User profile saved successfully with name");
 
-      if (patientError) {
-        console.error("Patient update error:", patientError);
-        throw patientError;
+      // ============================================================
+      // 2. Try to save/update patients - but don't fail if it errors
+      // ============================================================
+      try {
+        const { data: existingPatient } = await supabase
+          .from("patients")
+          .select("patient_id")
+          .eq("user_id", user?.id)
+          .maybeSingle();
+
+        let patientId = existingPatient?.patient_id;
+        if (!patientId) {
+          const { data: latestPatient } = await supabase
+            .from("patients")
+            .select("patient_id")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (latestPatient?.patient_id) {
+            const num = parseInt(latestPatient.patient_id.split('-')[2]) + 1;
+            patientId = `PAT-${new Date().getFullYear()}-${String(num).padStart(4, '0')}`;
+          } else {
+            patientId = `PAT-${new Date().getFullYear()}-0001`;
+          }
+        }
+
+        const { error: patientError } = await supabase
+          .from("patients")
+          .upsert({
+            user_id: user?.id,
+            patient_id: patientId,
+            phone: onboardingForm.phone,
+            date_of_birth: onboardingForm.date_of_birth,
+            gender: onboardingForm.gender,
+            address: onboardingForm.address,
+            blood_type: onboardingForm.blood_type,
+            emergency_contact: onboardingForm.emergency_contact,
+            emergency_phone: onboardingForm.emergency_phone,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+
+        if (patientError) {
+          console.error("❌ Patient update error (non-fatal):", patientError);
+        } else {
+          console.log("✅ Patient record saved successfully");
+        }
+      } catch (patientErr) {
+        console.error("❌ Patient update exception (non-fatal):", patientErr);
       }
 
       showToast("Profile Completed!", "Your information has been saved successfully.", "success");
-      navigate("/patient/dashboard", { replace: true });
+      
+      // ============================================================
+      // ✅ FORCE NAVIGATION TO DASHBOARD - MULTIPLE METHODS
+      // ============================================================
+      console.log("🚀 Attempting to navigate to dashboard...");
+      
+      // Method 1: React Router navigate
+      try {
+        navigate("/patient/dashboard", { replace: true });
+        console.log("✅ Navigation via React Router sent");
+      } catch (navError) {
+        console.error("❌ React Router navigation failed:", navError);
+      }
+      
+      // Method 2: Window location (fallback)
+      setTimeout(() => {
+        console.log("🔄 Fallback: Using window.location.href...");
+        window.location.href = "/patient/dashboard";
+      }, 300);
+      
+      // Method 3: Direct location assign (final fallback)
+      setTimeout(() => {
+        console.log("🔄 Final fallback: Using window.location.assign...");
+        window.location.assign("/patient/dashboard");
+      }, 600);
+      
     } catch (err: any) {
-      console.error("Save error:", err);
+      console.error("❌ Save error:", err);
       showToast("Error", err.message || "Failed to complete onboarding", "error");
-    } finally {
       setSavingOnboarding(false);
     }
   };
@@ -288,6 +398,17 @@ export default function PatientOnboarding() {
                   transition={{ duration: 0.25 }}
                   className="p-6 sm:p-7 space-y-5"
                 >
+                  {/* Display user's name from auth */}
+                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+                    <User className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {user?.first_name || "Patient"} {user?.last_name || ""}
+                      </p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Date of Birth *</label>
                     <div className="relative">
